@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "FitMarket",
+    "slug": "fitmarket",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "fitmarket",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fitmarket.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.fitmarket.app",
+      "allowBackup": false
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

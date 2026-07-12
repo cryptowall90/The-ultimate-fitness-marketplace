@@ -1,0 +1,14 @@
+# Maestro smoke flow: app launches, tabs navigate, sign-in screen reachable.
+# Run: maestro test .maestro/smoke.yaml   (documented in docs/TESTING.md)
+appId: com.fitmarket.app
+---
+- launchApp
+- assertVisible: "Discover"
+- tapOn: "Search"
+- assertVisible: "Search trainers"
+- tapOn: "Programs"
+- assertVisible: "Sign in"
+- tapOn: "Profile"
+- tapOn: "Sign in or create an account"
+- assertVisible: "Email"
+- assertVisible: "Password"

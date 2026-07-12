@@ -1,0 +1,37 @@
+{
+  "name": "@fitmarket/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint app lib",
+    "test": "echo 'mobile: typecheck + Maestro flows (see .maestro/)'"
+  },
+  "dependencies": {
+    "@fitmarket/types": "workspace:*",
+    "@fitmarket/validation": "workspace:*",
+    "@supabase/supabase-js": "2.47.10",
+    "expo": "~52.0.25",
+    "expo-constants": "~17.0.4",
+    "expo-image-manipulator": "~13.0.6",
+    "expo-linking": "~7.0.4",
+    "expo-router": "~4.0.16",
+    "expo-secure-store": "~14.0.1",
+    "expo-status-bar": "~2.0.1",
+    "react": "18.3.1",
+    "react-native": "0.76.6",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@fitmarket/config": "workspace:*",
+    "@types/react": "~18.3.12",
+    "eslint": "9.17.0",
+    "typescript": "5.6.3"
+  }
+}
