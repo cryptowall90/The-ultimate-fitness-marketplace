@@ -53,8 +53,8 @@ export function SignUpForm() {
   if (done) {
     return (
       <p className="notice" role="status">
-        Check your inbox — we sent a verification link. You need to verify your email before
-        signing in.
+        Check your inbox — we sent a verification link. You need to verify your email before signing
+        in.
       </p>
     );
   }
@@ -115,7 +115,12 @@ export function SignUpForm() {
           {serverMessage}
         </p>
       )}
-      <button className="btn btn-primary" type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <button
+        className="btn btn-primary"
+        type="submit"
+        disabled={isSubmitting}
+        aria-busy={isSubmitting}
+      >
         {isSubmitting ? "Creating account…" : "Create account"}
       </button>
     </form>

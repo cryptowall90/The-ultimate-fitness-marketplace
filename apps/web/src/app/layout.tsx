@@ -9,8 +9,7 @@ export const metadata: Metadata = {
     default: "FitMarket — Find your trainer",
     template: "%s · FitMarket",
   },
-  description:
-    "Discover, compare and train with verified online and in-person personal trainers.",
+  description: "Discover, compare and train with verified online and in-person personal trainers.",
 };
 
 export const viewport: Viewport = {

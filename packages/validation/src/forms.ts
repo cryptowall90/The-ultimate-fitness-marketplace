@@ -9,7 +9,10 @@ const baseField = z.object({
 });
 
 export const formFieldSchema = z.discriminatedUnion("type", [
-  baseField.extend({ type: z.literal("text"), maxLength: z.number().int().min(1).max(4000).default(500) }),
+  baseField.extend({
+    type: z.literal("text"),
+    maxLength: z.number().int().min(1).max(4000).default(500),
+  }),
   baseField.extend({
     type: z.literal("number"),
     min: z.number().optional(),

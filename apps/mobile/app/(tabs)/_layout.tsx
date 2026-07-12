@@ -4,10 +4,7 @@ import { colors } from "@/lib/theme";
 
 function TabIcon({ glyph, focused }: { glyph: string; focused: boolean }) {
   return (
-    <Text
-      accessibilityElementsHidden
-      style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}
-    >
+    <Text accessibilityElementsHidden style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>
       {glyph}
     </Text>
   );

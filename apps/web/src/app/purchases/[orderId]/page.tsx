@@ -10,11 +10,7 @@ export const dynamic = "force-dynamic";
  * this page only reflects the order state that the verified webhook wrote.
  * While the webhook is in flight the order shows as processing.
  */
-export default async function PurchasePage({
-  params,
-}: {
-  params: Promise<{ orderId: string }>;
-}) {
+export default async function PurchasePage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await params;
   if (!/^[0-9a-f-]{36}$/.test(orderId)) notFound();
 
@@ -81,8 +77,8 @@ export default async function PurchasePage({
       ) : (
         <div className="notice notice-error" role="alert">
           <p>
-            This order is {order.status.replaceAll("_", " ")}. If you believe this is wrong,
-            contact support with order reference {order.id.slice(0, 8)}.
+            This order is {order.status.replaceAll("_", " ")}. If you believe this is wrong, contact
+            support with order reference {order.id.slice(0, 8)}.
           </p>
         </div>
       )}

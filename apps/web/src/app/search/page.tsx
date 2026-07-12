@@ -107,8 +107,7 @@ export default async function SearchPage({
     rows = (data ?? []) as SearchRow[];
   }
 
-  const showResults =
-    params.mode === "online" || params.lat !== undefined || Boolean(params.city);
+  const showResults = params.mode === "online" || params.lat !== undefined || Boolean(params.city);
 
   return (
     <div>
@@ -136,7 +135,12 @@ export default async function SearchPage({
             </div>
             <div className="field">
               <label htmlFor="radiusKm">Radius</label>
-              <select id="radiusKm" name="radiusKm" defaultValue={String(params.radiusKm)} className="input">
+              <select
+                id="radiusKm"
+                name="radiusKm"
+                defaultValue={String(params.radiusKm)}
+                className="input"
+              >
                 <option value="8">5 miles</option>
                 <option value="16">10 miles</option>
                 <option value="24">15 miles</option>
@@ -161,7 +165,12 @@ export default async function SearchPage({
         )}
         <div className="field">
           <label htmlFor="specialty">Specialty</label>
-          <select id="specialty" name="specialty" defaultValue={params.specialty ?? ""} className="input">
+          <select
+            id="specialty"
+            name="specialty"
+            defaultValue={params.specialty ?? ""}
+            className="input"
+          >
             <option value="">Any specialty</option>
             {(specialties ?? []).map((s) => (
               <option key={s.slug} value={s.slug}>
@@ -177,8 +186,8 @@ export default async function SearchPage({
 
       {cityNotFound && (
         <p className="notice notice-error" role="alert">
-          We couldn&apos;t find that city yet. Try one of our launch cities: Austin, New York,
-          Los Angeles, Chicago, Houston, Miami, Seattle, Denver.
+          We couldn&apos;t find that city yet. Try one of our launch cities: Austin, New York, Los
+          Angeles, Chicago, Houston, Miami, Seattle, Denver.
         </p>
       )}
       {searchError && (
@@ -210,7 +219,9 @@ export default async function SearchPage({
                           ? "In person"
                           : "Online & in person"}
                     </span>
-                    {row.service_area_label && <span className="badge">{row.service_area_label}</span>}
+                    {row.service_area_label && (
+                      <span className="badge">{row.service_area_label}</span>
+                    )}
                     {typeof row.distance_m === "number" && (
                       <span>{(row.distance_m / 1609.34).toFixed(1)} mi away</span>
                     )}

@@ -115,7 +115,11 @@ export async function createSellableTrainer(pool: pg.Pool): Promise<TrainerFixtu
   await pool.query(
     `insert into trainer_subscription_accounts (trainer_id, stripe_customer_id, stripe_subscription_id, status)
      values ($1, $2, $3, 'active')`,
-    [trainerId, `cus_fixture${fixtureCounter}${Date.now()}`, `sub_fixture${fixtureCounter}${Date.now()}`],
+    [
+      trainerId,
+      `cus_fixture${fixtureCounter}${Date.now()}`,
+      `sub_fixture${fixtureCounter}${Date.now()}`,
+    ],
   );
   const program = await pool.query(
     `insert into programs (trainer_id, slug, title, price_cents, currency, duration_value, duration_unit, status, published_at)

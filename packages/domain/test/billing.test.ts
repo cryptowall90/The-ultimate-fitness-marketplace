@@ -68,17 +68,17 @@ describe("active-client billability", () => {
         period,
       ),
     ).toBe(false);
-    expect(
-      isBillable(candidate({ actualStartAt: new Date("2026-08-01T00:00:00Z") }), period),
-    ).toBe(false);
+    expect(isBillable(candidate({ actualStartAt: new Date("2026-08-01T00:00:00Z") }), period)).toBe(
+      false,
+    );
   });
 
   it("does not bill never-activated or pre-access refunded enrollments", () => {
     expect(isBillable(candidate({ actualStartAt: null }), period)).toBe(false);
     expect(isBillable(candidate({ fullyRefundedBeforeAccess: true }), period)).toBe(false);
-    expect(
-      isBillable(candidate({ status: "pending_payment", actualStartAt: null }), period),
-    ).toBe(false);
+    expect(isBillable(candidate({ status: "pending_payment", actualStartAt: null }), period)).toBe(
+      false,
+    );
     expect(isBillable(candidate({ status: "canceled" }), period)).toBe(false);
   });
 

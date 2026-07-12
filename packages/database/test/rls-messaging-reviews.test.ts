@@ -181,9 +181,10 @@ describe("review integrity", () => {
 
   it("the trainer can respond but cannot alter the rating or comment", async () => {
     await db.asCommitted(trainer, (q) =>
-      q(`update reviews set trainer_response = 'Thanks for the feedback!' where enrollment_id = $1`, [
-        reviewFixture.enrollmentId,
-      ]),
+      q(
+        `update reviews set trainer_response = 'Thanks for the feedback!' where enrollment_id = $1`,
+        [reviewFixture.enrollmentId],
+      ),
     );
     await expect(
       db.as(trainer, (q) =>

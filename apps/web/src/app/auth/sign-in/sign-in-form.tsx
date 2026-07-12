@@ -41,7 +41,14 @@ export function SignInForm() {
     <form className="form-stack" onSubmit={onSubmit}>
       <div className="field">
         <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" className="input" autoComplete="email" required />
+        <input
+          id="email"
+          name="email"
+          type="email"
+          className="input"
+          autoComplete="email"
+          required
+        />
       </div>
       <div className="field">
         <label htmlFor="password">Password</label>
@@ -59,7 +66,12 @@ export function SignInForm() {
           {error}
         </p>
       )}
-      <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting}>
+      <button
+        className="btn btn-primary"
+        type="submit"
+        disabled={submitting}
+        aria-busy={submitting}
+      >
         {submitting ? "Signing in…" : "Sign in"}
       </button>
       <p>

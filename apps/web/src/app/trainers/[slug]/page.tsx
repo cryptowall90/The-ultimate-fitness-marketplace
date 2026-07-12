@@ -31,36 +31,47 @@ export default async function TrainerProfilePage({
     .maybeSingle();
   if (!trainer) notFound();
 
-  const [{ data: profile }, { data: rating }, { data: programs }, { data: reviews }, { data: locations }] =
-    await Promise.all([
-      supabase.from("profiles").select("display_name, bio").eq("user_id", trainer.user_id).maybeSingle(),
-      supabase
-        .from("trainer_rating_summaries")
-        .select("average_rating, weighted_rating, review_count")
-        .eq("trainer_id", trainer.user_id)
-        .maybeSingle(),
-      supabase
-        .from("programs")
-        .select("id, slug, title, summary, price_cents, currency, duration_value, duration_unit, delivery_mode, status")
-        .eq("trainer_id", trainer.user_id)
-        .eq("status", "published")
-        .eq("visibility", "public")
-        .order("published_at", { ascending: false })
-        .limit(20),
-      supabase
-        .from("reviews")
-        .select("id, rating, comment, trainer_response, created_at, is_verified_purchase")
-        .eq("trainer_id", trainer.user_id)
-        .order("created_at", { ascending: false })
-        .limit(10),
-      // Safe columns only; RLS hides this table from non-owners, so this
-      // returns rows only for the owner. Public viewers see area labels from
-      // the search results instead.
-      supabase
-        .from("trainer_service_locations")
-        .select("service_area_label")
-        .eq("trainer_id", trainer.user_id),
-    ]);
+  const [
+    { data: profile },
+    { data: rating },
+    { data: programs },
+    { data: reviews },
+    { data: locations },
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name, bio")
+      .eq("user_id", trainer.user_id)
+      .maybeSingle(),
+    supabase
+      .from("trainer_rating_summaries")
+      .select("average_rating, weighted_rating, review_count")
+      .eq("trainer_id", trainer.user_id)
+      .maybeSingle(),
+    supabase
+      .from("programs")
+      .select(
+        "id, slug, title, summary, price_cents, currency, duration_value, duration_unit, delivery_mode, status",
+      )
+      .eq("trainer_id", trainer.user_id)
+      .eq("status", "published")
+      .eq("visibility", "public")
+      .order("published_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("reviews")
+      .select("id, rating, comment, trainer_response, created_at, is_verified_purchase")
+      .eq("trainer_id", trainer.user_id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    // Safe columns only; RLS hides this table from non-owners, so this
+    // returns rows only for the owner. Public viewers see area labels from
+    // the search results instead.
+    supabase
+      .from("trainer_service_locations")
+      .select("service_area_label")
+      .eq("trainer_id", trainer.user_id),
+  ]);
 
   const { data: { user } = { user: null } } = await supabase.auth.getUser();
 
@@ -138,7 +149,9 @@ export default async function TrainerProfilePage({
       <section aria-labelledby="reviews-heading">
         <h2 id="reviews-heading">Reviews</h2>
         {(reviews ?? []).length === 0 ? (
-          <div className="empty-state">No reviews yet — be the first verified client to leave one.</div>
+          <div className="empty-state">
+            No reviews yet — be the first verified client to leave one.
+          </div>
         ) : (
           (reviews ?? []).map((review) => (
             <div key={review.id} className="card" style={{ marginBottom: "var(--space-md)" }}>

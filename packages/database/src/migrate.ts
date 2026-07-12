@@ -11,7 +11,9 @@ export const seedsDir = join(here, "..", "seeds");
 export function databaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    throw new Error("DATABASE_URL is required (e.g. postgres://postgres@127.0.0.1:54329/fitmarket)");
+    throw new Error(
+      "DATABASE_URL is required (e.g. postgres://postgres@127.0.0.1:54329/fitmarket)",
+    );
   }
   return url;
 }
@@ -49,9 +51,7 @@ export async function migrate(url = databaseUrl()): Promise<string[]> {
       )`);
     // Migration bookkeeping is never client-accessible.
     await client.query("alter table schema_migrations enable row level security");
-    await client.query(
-      "revoke all on table schema_migrations from anon, authenticated",
-    );
+    await client.query("revoke all on table schema_migrations from anon, authenticated");
     const done = new Set(
       (await client.query("select name from schema_migrations")).rows.map((r) => r.name as string),
     );

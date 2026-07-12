@@ -147,10 +147,9 @@ describe("entitlement expiry job", () => {
       en.rows[0].id,
     ]);
     expect(enrollment.rows[0].status).toBe("expired");
-    const ents = await t.pool.query(
-      `select status from entitlements where enrollment_id = $1`,
-      [en.rows[0].id],
-    );
+    const ents = await t.pool.query(`select status from entitlements where enrollment_id = $1`, [
+      en.rows[0].id,
+    ]);
     expect(ents.rows[0].status).toBe("expired");
 
     // Idempotent second run.

@@ -32,9 +32,21 @@ export function ResetPasswordForm() {
     <form className="form-stack" onSubmit={onSubmit}>
       <div className="field">
         <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" className="input" autoComplete="email" required />
+        <input
+          id="email"
+          name="email"
+          type="email"
+          className="input"
+          autoComplete="email"
+          required
+        />
       </div>
-      <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting}>
+      <button
+        className="btn btn-primary"
+        type="submit"
+        disabled={submitting}
+        aria-busy={submitting}
+      >
         {submitting ? "Sending…" : "Send reset link"}
       </button>
     </form>

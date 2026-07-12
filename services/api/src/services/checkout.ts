@@ -73,7 +73,8 @@ export async function createProgramCheckout(
       `select id from program_versions where program_id = $1 order by version desc limit 1`,
       [program.id],
     );
-    if (!versionRes.rows[0]) throw new CheckoutError("program_not_found", "Program has no published version");
+    if (!versionRes.rows[0])
+      throw new CheckoutError("program_not_found", "Program has no published version");
 
     const snapshotRes = await tx.query(
       `insert into program_purchase_snapshots

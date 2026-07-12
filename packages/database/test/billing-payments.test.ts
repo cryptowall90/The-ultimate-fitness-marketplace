@@ -98,7 +98,9 @@ describe("billing ledger immutability", () => {
       [trainer, client],
     );
     await expect(
-      db.admin(`update public.payment_ledger set amount_cents = 1 where idempotency_key = 'pl-key-1'`),
+      db.admin(
+        `update public.payment_ledger set amount_cents = 1 where idempotency_key = 'pl-key-1'`,
+      ),
     ).rejects.toThrow(/immutable/);
     await expect(
       db.admin(`delete from public.payment_ledger where idempotency_key = 'pl-key-1'`),
@@ -124,9 +126,7 @@ describe("critical test 7: duplicate webhook events are deduplicated", () => {
 describe("critical test 6: clients cannot fabricate payment state", () => {
   it("client cannot update their order to paid (privilege revoked)", async () => {
     await expect(
-      db.as(client, (q) =>
-        q(`update orders set status = 'paid' where id = $1`, [fixture.orderId]),
-      ),
+      db.as(client, (q) => q(`update orders set status = 'paid' where id = $1`, [fixture.orderId])),
     ).rejects.toThrow(/permission denied/);
   });
 
@@ -152,9 +152,9 @@ describe("critical test 6: clients cannot fabricate payment state", () => {
   });
 
   it("client cannot write the billing ledger or webhook tables at all", async () => {
-    await expect(
-      db.as(client, (q) => q(`select * from webhook_events`)),
-    ).rejects.toThrow(/permission denied/);
+    await expect(db.as(client, (q) => q(`select * from webhook_events`))).rejects.toThrow(
+      /permission denied/,
+    );
     await expect(
       db.as(client, (q) =>
         q(

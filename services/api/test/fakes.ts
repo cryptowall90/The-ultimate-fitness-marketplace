@@ -71,7 +71,10 @@ export class FakeConnectGateway implements ConnectGateway {
   }
 
   async createOnboardingLink(): Promise<{ url: string; expiresAt: Date }> {
-    return { url: "https://connect.stripe.test/onboarding", expiresAt: new Date(Date.now() + 300_000) };
+    return {
+      url: "https://connect.stripe.test/onboarding",
+      expiresAt: new Date(Date.now() + 300_000),
+    };
   }
 
   async getAccountStatus(): Promise<{

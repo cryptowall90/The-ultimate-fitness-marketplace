@@ -143,10 +143,7 @@ async function handleCheckoutCompleted(
   if (!orderId) throw new Error(`checkout session ${session.id} has no order reference`);
 
   await withTransaction(pool, async (tx) => {
-    const orderRes = await tx.query(
-      `select * from orders where id = $1 for update`,
-      [orderId],
-    );
+    const orderRes = await tx.query(`select * from orders where id = $1 for update`, [orderId]);
     const order = orderRes.rows[0];
     if (!order) throw new Error(`order ${orderId} not found for checkout session ${session.id}`);
     if (order.status === "paid") return; // idempotent replay
@@ -160,14 +157,18 @@ async function handleCheckoutCompleted(
       `insert into payments (order_id, stripe_payment_intent_id, status, amount_cents, currency, succeeded_at)
        values ($1, $2, 'succeeded', $3, $4, now())
        on conflict (stripe_payment_intent_id) do nothing`,
-      [orderId, session.payment_intent ?? `session:${session.id}`, order.amount_cents, order.currency],
+      [
+        orderId,
+        session.payment_intent ?? `session:${session.id}`,
+        order.amount_cents,
+        order.currency,
+      ],
     );
 
     // Enrollment + access window from the immutable purchase snapshot.
-    const snapshotRes = await tx.query(
-      `select * from program_purchase_snapshots where id = $1`,
-      [order.purchase_snapshot_id],
-    );
+    const snapshotRes = await tx.query(`select * from program_purchase_snapshots where id = $1`, [
+      order.purchase_snapshot_id,
+    ]);
     const snapshot = snapshotRes.rows[0];
     const intervalSql =
       snapshot.duration_unit === "day"
@@ -185,7 +186,14 @@ async function handleCheckoutCompleted(
           actual_start_at, access_ends_at)
        values ($1,$2,$3,$4,$5,'pending_payment', now(), now() + $6::interval)
        returning id, access_ends_at`,
-      [order.client_id, order.trainer_id, order.program_id, order.purchase_snapshot_id, orderId, intervalSql],
+      [
+        order.client_id,
+        order.trainer_id,
+        order.program_id,
+        order.purchase_snapshot_id,
+        orderId,
+        intervalSql,
+      ],
     );
     const enrollmentId: string = enrollmentRes.rows[0].id;
     await tx.query(`update enrollments set status = 'active' where id = $1`, [enrollmentId]);
@@ -195,7 +203,13 @@ async function handleCheckoutCompleted(
         `insert into entitlements (enrollment_id, client_id, trainer_id, type, status, ends_at)
          values ($1,$2,$3,$4,'active',$5)
          on conflict (enrollment_id, type) do nothing`,
-        [enrollmentId, order.client_id, order.trainer_id, type, enrollmentRes.rows[0].access_ends_at],
+        [
+          enrollmentId,
+          order.client_id,
+          order.trainer_id,
+          type,
+          enrollmentRes.rows[0].access_ends_at,
+        ],
       );
     }
 
@@ -289,7 +303,14 @@ async function handleChargeRefunded(pool: pg.Pool, charge: ChargeData): Promise<
         `insert into refunds (payment_id, order_id, stripe_refund_id, amount_cents, currency, status, idempotency_key)
          values ($1,$2,$3,$4,$5,'succeeded',$6)
          on conflict (stripe_refund_id) do nothing`,
-        [payment.id, payment.order_id, r.id, r.amount, charge.currency ?? payment.currency, `refund:${r.id}`],
+        [
+          payment.id,
+          payment.order_id,
+          r.id,
+          r.amount,
+          charge.currency ?? payment.currency,
+          `refund:${r.id}`,
+        ],
       );
     }
     if (full) {
@@ -427,7 +448,9 @@ async function handleSubscriptionChanged(pool: pg.Pool, sub: SubscriptionData): 
     }
     // Suspension pauses the public profile (billing rule).
     if (mapSubscriptionStatus(sub.status) === "suspended") {
-      await tx.query(`update trainer_profiles set is_public = false where user_id = $1`, [trainerId]);
+      await tx.query(`update trainer_profiles set is_public = false where user_id = $1`, [
+        trainerId,
+      ]);
     }
   });
 }

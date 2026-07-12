@@ -141,9 +141,10 @@ describe("critical test 11: private progress photos", () => {
     );
     expect(before.rows).toHaveLength(0);
 
-    await db.admin(`update public.progress_photos set shared_with_trainer = true where media_id = $1`, [
-      mediaId,
-    ]);
+    await db.admin(
+      `update public.progress_photos set shared_with_trainer = true where media_id = $1`,
+      [mediaId],
+    );
     const after = await db.as(trainerA, (q) =>
       q(`select * from progress_photos where client_id = $1`, [clientA]),
     );

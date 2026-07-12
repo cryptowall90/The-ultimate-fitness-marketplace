@@ -23,9 +23,9 @@ describe("enrollment state machine", () => {
 
   it("expired enrollment blocks messaging but transition to refund still allowed", () => {
     const now = new Date("2026-07-10T12:00:00Z");
-    expect(
-      hasMessagingAccess("expired", { actualStartAt: null, accessEndsAt: null }, now),
-    ).toBe(false);
+    expect(hasMessagingAccess("expired", { actualStartAt: null, accessEndsAt: null }, now)).toBe(
+      false,
+    );
     expect(canTransitionEnrollment("expired", "refunded")).toBe(true);
   });
 });

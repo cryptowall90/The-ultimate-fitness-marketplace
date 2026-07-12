@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { generateObjectKey, sniffMime, validateUpload, MAX_UPLOAD_BYTES } from "../src/validation.js";
+import {
+  generateObjectKey,
+  sniffMime,
+  validateUpload,
+  MAX_UPLOAD_BYTES,
+} from "../src/validation.js";
 
 function bytes(...values: number[]): Uint8Array {
   const arr = new Uint8Array(Math.max(16, values.length));
@@ -10,7 +15,9 @@ function bytes(...values: number[]): Uint8Array {
 const JPEG = bytes(0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0);
 const PNG = bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0);
 const PDF = bytes(0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0, 0, 0, 0);
-const SVG = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>');
+const SVG = new TextEncoder().encode(
+  '<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>',
+);
 
 describe("sniffMime", () => {
   it("detects supported formats by signature", () => {
@@ -51,7 +58,9 @@ describe("validateUpload", () => {
   it("rejects oversized uploads", () => {
     const big = new Uint8Array(MAX_UPLOAD_BYTES + 1);
     big.set([0xff, 0xd8, 0xff]);
-    expect(validateUpload({ bytes: big, declaredMime: "image/jpeg", kind: "image" }).ok).toBe(false);
+    expect(validateUpload({ bytes: big, declaredMime: "image/jpeg", kind: "image" }).ok).toBe(
+      false,
+    );
   });
 
   it("rejects image bombs by dimensions", () => {

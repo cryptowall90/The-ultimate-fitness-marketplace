@@ -133,9 +133,7 @@ describe("stripe webhook", () => {
       headers: { "stripe-signature": "t=123,v1=deadbeef" },
     });
     expect(res.status).toBe(400);
-    const events = await t.pool.query(
-      `select * from webhook_events where event_id = 'evt_forged'`,
-    );
+    const events = await t.pool.query(`select * from webhook_events where event_id = 'evt_forged'`);
     expect(events.rows).toHaveLength(0); // unverified events are never persisted
   });
 

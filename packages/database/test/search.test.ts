@@ -79,18 +79,20 @@ describe("critical test 15: geographic search caps and pagination", () => {
 
   it("supports stable keyset pagination", async () => {
     const page1 = await db.asAnon((q) =>
-      q(`select trainer_id, distance_m from app.search_trainers_nearby($1, $2, 160, null, null, 2)`, [
-        ORIGIN.lat,
-        ORIGIN.lng,
-      ]),
+      q(
+        `select trainer_id, distance_m from app.search_trainers_nearby($1, $2, 160, null, null, 2)`,
+        [ORIGIN.lat, ORIGIN.lng],
+      ),
     );
     expect(page1.rows.length).toBe(2);
     const last = page1.rows.at(-1)!;
     const page2 = await db.asAnon((q) =>
-      q(
-        `select trainer_id from app.search_trainers_nearby($1, $2, 160, null, null, 2, $3, $4)`,
-        [ORIGIN.lat, ORIGIN.lng, last.distance_m, last.trainer_id],
-      ),
+      q(`select trainer_id from app.search_trainers_nearby($1, $2, 160, null, null, 2, $3, $4)`, [
+        ORIGIN.lat,
+        ORIGIN.lng,
+        last.distance_m,
+        last.trainer_id,
+      ]),
     );
     const ids1 = page1.rows.map((r) => r.trainer_id);
     for (const row of page2.rows) {

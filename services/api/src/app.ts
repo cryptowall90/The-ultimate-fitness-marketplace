@@ -4,7 +4,12 @@ import { bodyLimit } from "hono/body-limit";
 import type pg from "pg";
 import type { Logger } from "@fitmarket/observability";
 import { newCorrelationId, withCorrelation } from "@fitmarket/observability";
-import type { PaymentGateway, SubscriptionGateway, WebhookVerifier, ConnectGateway } from "@fitmarket/payments";
+import type {
+  PaymentGateway,
+  SubscriptionGateway,
+  WebhookVerifier,
+  ConnectGateway,
+} from "@fitmarket/payments";
 import { createCheckoutSchema } from "@fitmarket/validation";
 import type { ApiEnv } from "./env.js";
 import { bearerAuth, jobAuth } from "./auth.js";
@@ -100,7 +105,11 @@ export function buildApp(deps: AppDeps): Hono {
       return c.json({ error: { code: "invalid_signature", message: "Invalid signature" } }, 400);
     }
     try {
-      const result = await processStripeEvent(pool, withCorrelation(log, c.get("correlationId")), event);
+      const result = await processStripeEvent(
+        pool,
+        withCorrelation(log, c.get("correlationId")),
+        event,
+      );
       return c.json({ received: true, outcome: result.outcome });
     } catch (err) {
       withCorrelation(log, c.get("correlationId")).error(
@@ -162,7 +171,10 @@ export function buildApp(deps: AppDeps): Hono {
       );
       const row = trainer.rows[0];
       if (!row) {
-        return c.json({ error: { code: "not_a_trainer", message: "Trainer profile required" } }, 403);
+        return c.json(
+          { error: { code: "not_a_trainer", message: "Trainer profile required" } },
+          403,
+        );
       }
       let accountId: string = row.stripe_account_id;
       if (!accountId) {
@@ -209,7 +221,10 @@ export function buildApp(deps: AppDeps): Hono {
       );
       const row = trainer.rows[0];
       if (!row) {
-        return c.json({ error: { code: "not_a_trainer", message: "Trainer profile required" } }, 403);
+        return c.json(
+          { error: { code: "not_a_trainer", message: "Trainer profile required" } },
+          403,
+        );
       }
       let customerId: string = row.stripe_customer_id;
       if (!customerId) {
@@ -269,9 +284,7 @@ export function buildApp(deps: AppDeps): Hono {
     return c.json({ expiredEntitlements: expired.rowCount ?? 0 });
   });
 
-  app.notFound((c) =>
-    c.json({ error: { code: "not_found", message: "Not found" } }, 404),
-  );
+  app.notFound((c) => c.json({ error: { code: "not_found", message: "Not found" } }, 404));
   app.onError((err, c) => {
     withCorrelation(log, c.get("correlationId") ?? "unknown").error(
       { err: err.message },

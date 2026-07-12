@@ -5,10 +5,17 @@ export default function HomePage() {
     <div className="hero">
       <h1>Train with someone who gets you</h1>
       <p>
-        Compare verified online and in-person personal trainers, read reviews from real
-        clients, and buy programs with transparent pricing and clear end dates.
+        Compare verified online and in-person personal trainers, read reviews from real clients, and
+        buy programs with transparent pricing and clear end dates.
       </p>
-      <div style={{ display: "flex", gap: "var(--space-md)", justifyContent: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "var(--space-md)",
+          justifyContent: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <Link href="/search" className="btn btn-primary">
           Find a trainer near you
         </Link>

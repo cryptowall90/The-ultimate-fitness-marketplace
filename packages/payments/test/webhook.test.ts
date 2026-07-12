@@ -1,4 +1,3 @@
-import Stripe from "stripe";
 import { describe, expect, it } from "vitest";
 import { StripeWebhookVerifier, createStripeClient } from "../src/stripe.js";
 
