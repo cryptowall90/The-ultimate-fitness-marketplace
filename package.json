@@ -1,0 +1,26 @@
+{
+  "name": "fitness-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter='!@fitmarket/mobile' build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r --filter='!@fitmarket/database' test",
+    "test:unit": "pnpm --filter '@fitmarket/domain' --filter '@fitmarket/validation' --filter '@fitmarket/payments' --filter '@fitmarket/media' --filter '@fitmarket/observability' test",
+    "test:db": "pnpm --filter '@fitmarket/database' test",
+    "test:api": "pnpm --filter '@fitmarket/api' test",
+    "db:migrate": "pnpm --filter '@fitmarket/database' migrate",
+    "db:reset": "pnpm --filter '@fitmarket/database' reset",
+    "db:seed": "pnpm --filter '@fitmarket/database' seed"
+  },
+  "devDependencies": {
+    "prettier": "3.4.2"
+  }
+}
