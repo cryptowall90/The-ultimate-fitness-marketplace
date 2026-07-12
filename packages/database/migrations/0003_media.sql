@@ -78,7 +78,7 @@ create policy media_objects_owner_delete_soft on public.media_objects
 create or replace function app.protect_media_status() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if auth.role() = 'service_role' then
+  if app.is_service_context() then
     return new;
   end if;
   -- Owners may only soft-delete; scan/publish transitions are server-managed.

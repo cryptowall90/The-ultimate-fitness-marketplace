@@ -295,7 +295,7 @@ create policy trainer_profiles_update_own on public.trainer_profiles
 create or replace function app.protect_trainer_approval_columns() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if auth.role() = 'service_role' then
+  if app.is_service_context() then
     return new;
   end if;
   if new.application_status is distinct from old.application_status then
@@ -354,7 +354,7 @@ create policy trainer_credentials_moderator_select on public.trainer_credentials
 create or replace function app.protect_credential_status() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if auth.role() = 'service_role' then
+  if app.is_service_context() then
     return new;
   end if;
   if new.status is distinct from old.status

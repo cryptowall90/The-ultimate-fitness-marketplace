@@ -129,3 +129,13 @@ create or replace function app.has_role(check_role public.app_role) returns bool
 language sql stable security definer set search_path = public as $$
   select false
 $$;
+
+-- True for privileged server contexts: either the Supabase service_role JWT,
+-- or a direct database connection with no request JWT at all (services/api,
+-- migrations, jobs). PostgREST client requests ALWAYS carry claims with role
+-- anon/authenticated, so they can never satisfy this.
+create or replace function app.is_service_context() returns boolean
+language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '') = ''
+      or auth.role() = 'service_role'
+$$;

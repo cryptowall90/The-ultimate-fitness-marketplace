@@ -45,7 +45,7 @@ $$;
 create or replace function app.protect_review_columns() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if auth.role() = 'service_role' then return new; end if;
+  if app.is_service_context() then return new; end if;
 
   if new.reviewer_client_id is distinct from old.reviewer_client_id
      or new.trainer_id is distinct from old.trainer_id
