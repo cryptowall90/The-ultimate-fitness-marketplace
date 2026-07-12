@@ -213,6 +213,67 @@ importers:
         specifier: 2.1.8
         version: 2.1.8(@types/node@22.10.5)
 
+  services/api:
+    dependencies:
+      '@fitmarket/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@fitmarket/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@fitmarket/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@fitmarket/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
+      '@fitmarket/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@fitmarket/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      '@hono/node-server':
+        specifier: 1.13.7
+        version: 1.13.7(hono@4.6.16)
+      hono:
+        specifier: 4.6.16
+        version: 4.6.16
+      jose:
+        specifier: 5.9.6
+        version: 5.9.6
+      pg:
+        specifier: 8.13.1
+        version: 8.13.1
+      zod:
+        specifier: 3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@fitmarket/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@types/node':
+        specifier: 22.10.5
+        version: 22.10.5
+      '@types/pg':
+        specifier: 8.11.10
+        version: 8.11.10
+      eslint:
+        specifier: 9.17.0
+        version: 9.17.0
+      stripe:
+        specifier: 17.5.0
+        version: 17.5.0
+      tsx:
+        specifier: 4.19.2
+        version: 4.19.2
+      typescript:
+        specifier: 5.6.3
+        version: 5.6.3
+      vitest:
+        specifier: 2.1.8
+        version: 2.1.8(@types/node@22.10.5)
+
 packages:
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -534,6 +595,12 @@ packages:
   '@eslint/plugin-kit@0.2.8':
     resolution: {integrity: sha512-ZAoA40rNMPwSm+AeHpCq8STiNAwzWLJuP8Xv4CHIc9wv/PSuExjMrmjfYNj682vW0OOiZ1HKxzvjQr9XZIisQA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@hono/node-server@1.13.7':
+    resolution: {integrity: sha512-kTfUMsoloVKtRA2fLiGSd9qBddmru9KadNyhJCwgKBxTiNkaAJEwkVN9KV/rS4HtmmNRtUh6P+YpmjRMl0d9vQ==}
+    engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: ^4
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1075,6 +1142,10 @@ packages:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
 
+  hono@4.6.16:
+    resolution: {integrity: sha512-iE6xOPwDYlfnZFwk6BfIMMIH4WZm3pPhz6rc1uJM/OPew0pjG5K6p8WTLaMBY1/szF/T0TaEjprMpwn16BA0NQ==}
+    engines: {node: '>=16.9.0'}
+
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
     engines: {node: '>= 4'}
@@ -1101,6 +1172,9 @@ packages:
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
+
+  jose@5.9.6:
+    resolution: {integrity: sha512-AMlnetc9+CV9asI19zHmrgS/WYsWUwCn2R7RzlbJWD7F9eWYUTGyBmU9o6PxngtLGOiDGPRu+Uc4fhKzbpteZQ==}
 
   js-yaml@4.3.0:
     resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
@@ -1756,6 +1830,10 @@ snapshots:
       '@eslint/core': 0.13.0
       levn: 0.4.1
 
+  '@hono/node-server@1.13.7(hono@4.6.16)':
+    dependencies:
+      hono: 4.6.16
+
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -2323,6 +2401,8 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  hono@4.6.16: {}
+
   ignore@5.3.2: {}
 
   import-fresh@3.3.1:
@@ -2341,6 +2421,8 @@ snapshots:
   is-number@7.0.0: {}
 
   isexe@2.0.0: {}
+
+  jose@5.9.6: {}
 
   js-yaml@4.3.0:
     dependencies:
