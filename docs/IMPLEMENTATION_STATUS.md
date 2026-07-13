@@ -1,7 +1,8 @@
 # Implementation status
 
 Last updated: 2026-07-13 (continuation session: trainer application + admin approval +
-reviews UI + program builder + payment reconciliation job + web chat + favorites)
+reviews UI + program builder + payment reconciliation job + web chat + favorites +
+trainer billing/payout screens)
 
 Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer done, UI pending) ·
 ⬜ not started
@@ -77,7 +78,10 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ $2.50 active-client job: lock, domain rules, unique-per-period ledger, deterministic
   Stripe invoice-item idempotency, finalization on invoice.paid — double-run tested
 - ✅ Entitlement/enrollment expiry job (conversations become read-only)
-- ⬜ Trainer billing screens (data + RLS ready)
+- ✅ Trainer billing screen (/trainer/settings/billing: policy-priced subscription checkout
+  via services/api, status incl. past-due/grace warnings, period history, active-client
+  charges) and payouts screen (/trainer/settings/payouts: Connect onboarding status +
+  link) — all reads owner-select RLS; all state written by webhooks/jobs only
 
 ## Phase 6 — Messaging & reviews: 🟡 data/authz complete
 

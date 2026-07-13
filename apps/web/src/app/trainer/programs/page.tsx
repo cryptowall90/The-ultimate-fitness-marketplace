@@ -91,6 +91,10 @@ export default async function TrainerProgramsPage({
   return (
     <div>
       <h1>Your programs</h1>
+      <p>
+        <Link href="/trainer/settings/billing">Billing</Link> ·{" "}
+        <Link href="/trainer/settings/payouts">Payouts</Link>
+      </p>
 
       {params.saved === "1" && (
         <p className="notice" role="status">
