@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { credentialSchema, trainerApplicationSchema } from "@fitmarket/validation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { DocumentUpload } from "@/components/document-upload";
 
 export const metadata: Metadata = { title: "Become a trainer" };
 export const dynamic = "force-dynamic";
@@ -89,13 +90,28 @@ async function addCredentialAction(formData: FormData): Promise<void> {
 
   const issuedAt = String(formData.get("issuedAt") ?? "");
   const expiresAt = String(formData.get("expiresAt") ?? "");
+  const documentMediaId = String(formData.get("documentMediaId") ?? "");
   const parsed = credentialSchema.safeParse({
     title: String(formData.get("title") ?? ""),
     issuingOrganization: String(formData.get("issuingOrganization") ?? ""),
     ...(issuedAt ? { issuedAt } : {}),
     ...(expiresAt ? { expiresAt } : {}),
+    ...(documentMediaId ? { documentMediaId } : {}),
   });
   if (!parsed.success) redirect("/trainer/apply?error=credential");
+
+  // The media id is client-supplied — verify it is the caller's own
+  // credential document before attaching it (the FK alone wouldn't).
+  if (parsed.data.documentMediaId) {
+    const { data: media } = await supabase
+      .from("media_objects")
+      .select("id")
+      .eq("id", parsed.data.documentMediaId)
+      .eq("owner_id", user.id)
+      .eq("visibility", "private_document")
+      .maybeSingle();
+    if (!media) redirect("/trainer/apply?error=credential");
+  }
 
   const { error } = await supabase.from("trainer_credentials").insert({
     trainer_id: user.id,
@@ -103,6 +119,7 @@ async function addCredentialAction(formData: FormData): Promise<void> {
     issuing_organization: parsed.data.issuingOrganization,
     issued_at: parsed.data.issuedAt ?? null,
     expires_at: parsed.data.expiresAt ?? null,
+    document_media_id: parsed.data.documentMediaId ?? null,
   });
   if (error) redirect("/trainer/apply?error=credential");
 
@@ -403,6 +420,7 @@ export default async function TrainerApplyPage({
                 <label htmlFor="credExpires">Expires on (optional)</label>
                 <input id="credExpires" name="expiresAt" className="input" type="date" />
               </div>
+              <DocumentUpload name="documentMediaId" />
               <button className="btn btn-secondary" type="submit">
                 Add credential
               </button>

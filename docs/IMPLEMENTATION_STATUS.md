@@ -39,7 +39,10 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
   provider implementation + 7 integration tests
 - ✅ Avatar upload UI on /account (client-side resize/re-encode strips EXIF, signed-upload
   flow, avatar_media_id set only after server verification publishes) + avatar display on
-  the public trainer profile. Credential-document upload UI pending
+  the public trainer profile
+- ✅ Credential-document upload on /trainer/apply (PDF via signed-upload flow, quarantined
+  for scanning; server action verifies the media row is the caller's own private document
+  before attaching document_media_id)
 - ⬜ TOTP MFA enrollment UI (Supabase supports; enforcement flag seeded)
 
 ## Phase 2 — Search: 🟡 core done
@@ -129,10 +132,14 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ⬜ Moderation case management/escalation UI, admin portal (settings/flags), export/
   deletion job workers, appeals workflow UI
 
-## Phase 9 — Hardening: ⬜ (targets and gates documented in TESTING/DEPLOYMENT)
+## Phase 9 — Hardening: 🟡 started
 
-- ⬜ k6 load tests, CSP nonces (drop 'unsafe-inline'), durable rate limiter, restore drill,
-  incident drill, accessibility audit, app-store readiness
+- ✅ Durable rate limiter: Postgres-backed token bucket (rate_limit_buckets, service-only
+  RLS + migration 0014) on all per-account expensive routes — atomic upsert, correct across
+  instances, fails open with a logged warning on DB errors; stale buckets pruned by the
+  reconciliation job — 5 tests incl. shared-budget-across-instances + RLS denial test
+- ⬜ k6 load tests, CSP nonces (drop 'unsafe-inline'), restore drill, incident drill,
+  accessibility audit, app-store readiness
 
 ## Verification snapshot (this session)
 
@@ -142,8 +149,8 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 | `pnpm lint` | ✅ |
 | `pnpm format:check` | ✅ |
 | Unit tests (domain 32, validation 16, payments 6, media 9, observability 2) | ✅ 65 passed |
-| DB/RLS tests vs real PG16+PostGIS | ✅ 51 passed |
-| API integration tests (webhooks/billing/approvals/reconciliation/moderation/media) | ✅ 37 passed |
+| DB/RLS tests vs real PG16+PostGIS | ✅ 52 passed |
+| API integration tests (webhooks/billing/approvals/reconciliation/moderation/media/ratelimit) | ✅ 42 passed |
 | `next build` + bundle secret scan | ✅ |
 | `pnpm --filter @fitmarket/api build` | ✅ |
 | Mobile `tsc --noEmit` | ✅ (react type resolution pinned in tsconfig — pnpm hidden-hoist
@@ -154,5 +161,3 @@ of @types/react is order-dependent between the React 19 web app and React 18 mob
 1. UI coverage lags the data layer (CRM/admin/chat screens) — tracked per phase above.
 2. Geocoding adapter and Stripe balance-transaction comparison are designed but not coded.
 3. CSP still allows inline scripts (Next bootstrap) until nonce wiring (Phase 9).
-4. In-memory rate limiter is single-instance; durable implementation needed before
-   horizontal scaling.

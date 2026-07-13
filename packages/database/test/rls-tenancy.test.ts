@@ -281,3 +281,23 @@ describe("trainer application lifecycle (owner path used by /trainer/apply)", ()
     ).rejects.toThrow();
   });
 });
+
+describe("rate_limit_buckets is service-only", () => {
+  it("denies both anon and authenticated roles entirely", async () => {
+    await db.admin(
+      `insert into rate_limit_buckets (key, tokens) values ('rls-test-bucket', 5)
+       on conflict (key) do nothing`,
+    );
+    await expect(db.asAnon((q) => q(`select * from rate_limit_buckets`))).rejects.toThrow(
+      /permission denied/,
+    );
+    await expect(db.as(clientA, (q) => q(`select * from rate_limit_buckets`))).rejects.toThrow(
+      /permission denied/,
+    );
+    await expect(
+      db.as(clientA, (q) =>
+        q(`insert into rate_limit_buckets (key, tokens) values ('attacker', 999999)`),
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
+});
