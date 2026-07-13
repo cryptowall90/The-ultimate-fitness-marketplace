@@ -22,5 +22,11 @@
   },
   "devDependencies": {
     "prettier": "3.4.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "@xmldom/xmldom@<0.8.13": "0.8.13",
+      "tar@<7.5.20": "7.5.20"
+    }
   }
 }
