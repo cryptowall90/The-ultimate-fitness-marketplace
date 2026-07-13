@@ -1,0 +1,30 @@
+{
+  "name": "@fitmarket/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test",
+    "migrate": "tsx src/cli.ts migrate",
+    "reset": "tsx src/cli.ts reset",
+    "seed": "tsx src/cli.ts seed",
+    "gen:types": "tsx src/cli.ts gen-types",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pg": "8.13.1"
+  },
+  "devDependencies": {
+    "@fitmarket/config": "workspace:*",
+    "@types/node": "22.10.5",
+    "@types/pg": "8.11.10",
+    "eslint": "9.17.0",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+.next
+.expo
+coverage
+pnpm-lock.yaml
+*.md
+supabase/migrations
+packages/database/migrations
