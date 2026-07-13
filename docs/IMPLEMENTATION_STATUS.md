@@ -1,6 +1,7 @@
 # Implementation status
 
-Last updated: 2026-07-13 (continuation session: trainer application + admin approval + reviews UI)
+Last updated: 2026-07-13 (continuation session: trainer application + admin approval +
+reviews UI + program builder + payment reconciliation job)
 
 Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer done, UI pending) ·
 ⬜ not started
@@ -47,7 +48,10 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Schema: programs (status state machine), immutable versions on publish, immutable
   purchase snapshots; capacity; RLS (owner write, public read of published)
 - ✅ Program display + purchase on trainer profile (web)
-- ⬜ Trainer program-builder UI, admin program moderation UI
+- ✅ Trainer program builder (`/trainer/programs`): create drafts, edit, publish/pause/
+  archive via the DB state machine; editing a live program bumps the version and snapshots
+  it (owner-path lifecycle covered by a DB test); money parsed to integer cents, no floats
+- ⬜ Admin program moderation UI
 
 ## Phase 4 — Payments & enrollment: ✅ core complete (verified by 13 integration tests)
 
@@ -57,7 +61,11 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Enrollment state machine (TS + DB), entitlements, conversation bootstrap, CRM record
 - ✅ Append-only payment_ledger, refunds/disputes/transfers/payouts tables
 - ✅ Purchase status page reflecting webhook-written state only
-- 🟡 Reconciliation job (design + runbook + dead-letter storage done; job endpoint pending)
+- ✅ Reconciliation job (`/v1/jobs/reconcile-payments`): dead-letter replay through the
+  idempotent handlers with an 8-attempt abandonment cap, stale-order expiry (1h margin),
+  paid-order-without-enrollment invariant alert — 5 integration tests
+- 🟡 Stripe balance-transaction comparison + missing-webhook recovery (need provider list
+  APIs; documented in PAYMENTS.md)
 - ⬜ Trainer-initiated refund UI
 
 ## Phase 5 — Trainer billing: ✅ core complete (verified)
@@ -107,8 +115,8 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 | `pnpm lint` | ✅ |
 | `pnpm format:check` | ✅ |
 | Unit tests (domain 32, validation 16, payments 6, media 9, observability 2) | ✅ 65 passed |
-| DB/RLS tests vs real PG16+PostGIS | ✅ 50 passed |
-| API integration tests (webhooks/billing/admin approvals) | ✅ 20 passed |
+| DB/RLS tests vs real PG16+PostGIS | ✅ 51 passed |
+| API integration tests (webhooks/billing/admin approvals/reconciliation) | ✅ 25 passed |
 | `next build` + bundle secret scan | ✅ |
 | `pnpm --filter @fitmarket/api build` | ✅ |
 | Mobile `tsc --noEmit` | ✅ (react type resolution pinned in tsconfig — pnpm hidden-hoist
@@ -117,7 +125,7 @@ of @types/react is order-dependent between the React 19 web app and React 18 mob
 ## Top remaining risks
 
 1. UI coverage lags the data layer (CRM/admin/chat screens) — tracked per phase above.
-2. Geocoding adapter + reconciliation job endpoints are designed but not coded.
+2. Geocoding adapter and Stripe balance-transaction comparison are designed but not coded.
 3. CSP still allows inline scripts (Next bootstrap) until nonce wiring (Phase 9).
 4. In-memory rate limiter is single-instance; durable implementation needed before
    horizontal scaling.

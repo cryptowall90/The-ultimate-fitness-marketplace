@@ -218,3 +218,59 @@ describe("program snapshots are immutable (purchases survive edits)", () => {
     expect(snap.rows[0].price_cents).toBe(25000);
   });
 });
+
+describe("program lifecycle (owner path used by /trainer/programs)", () => {
+  it("owner drafts, publishes (snapshot v1), edits with version bump (snapshot v2)", async () => {
+    const owner = await createUser(db, "program-owner");
+    await makeTrainer(db, owner);
+    const created = await db.asCommitted(owner, (q) =>
+      q(
+        `insert into programs
+           (trainer_id, slug, title, price_cents, currency, duration_value, duration_unit)
+         values ($1, 'owner-prog', 'Owner program', 19900, 'usd', 8, 'week')
+         returning id, status, version`,
+        [owner],
+      ),
+    );
+    const programId = created.rows[0].id as string;
+    expect(created.rows[0].status).toBe("draft");
+
+    // Drafts are invisible to the public.
+    const anonBefore = await db.asAnon((q) =>
+      q(`select id from programs where id = $1`, [programId]),
+    );
+    expect(anonBefore.rows).toHaveLength(0);
+
+    await db.asCommitted(owner, (q) =>
+      q(`update programs set status = 'published' where id = $1`, [programId]),
+    );
+    const v1 = await db.admin(
+      `select version, snapshot->>'price_cents' as price from program_versions
+       where program_id = $1 order by version`,
+      [programId],
+    );
+    expect(v1.rows).toEqual([{ version: 1, price: "19900" }]);
+
+    // Editing the live program bumps the version and snapshots again.
+    await db.asCommitted(owner, (q) =>
+      q(`update programs set price_cents = 24900, version = version + 1 where id = $1`, [
+        programId,
+      ]),
+    );
+    const v2 = await db.admin(
+      `select version, snapshot->>'price_cents' as price from program_versions
+       where program_id = $1 order by version`,
+      [programId],
+    );
+    expect(v2.rows).toEqual([
+      { version: 1, price: "19900" },
+      { version: 2, price: "24900" },
+    ]);
+
+    // Owners cannot skip the state machine (draft -> archived is invalid
+    // for a fresh program; published -> draft is invalid here).
+    await expect(
+      db.as(owner, (q) => q(`update programs set status = 'draft' where id = $1`, [programId])),
+    ).rejects.toThrow(/invalid program status transition/);
+  });
+});

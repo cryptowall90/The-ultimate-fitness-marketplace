@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   CheckoutSession,
   CheckoutSessionRequest,
@@ -12,9 +13,12 @@ export class FakePaymentGateway implements PaymentGateway {
 
   async createCheckoutSession(req: CheckoutSessionRequest): Promise<CheckoutSession> {
     this.sessions.push(req);
+    // Globally unique: orders.stripe_checkout_session_id is UNIQUE and the
+    // database is shared across test files, so per-instance counters collide.
+    const sessionId = `cs_fake_${randomUUID()}`;
     return {
-      providerSessionId: `cs_fake_${this.sessions.length}`,
-      url: `https://checkout.stripe.test/session/${this.sessions.length}`,
+      providerSessionId: sessionId,
+      url: `https://checkout.stripe.test/session/${sessionId}`,
       expiresAt: new Date(Date.now() + 30 * 60_000),
     };
   }

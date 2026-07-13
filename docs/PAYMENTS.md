@@ -40,11 +40,21 @@ an `admin_actions` row — never edits.
 
 ## Reconciliation
 
-A scheduled job (runbook: `INCIDENT_RESPONSE.md`) lists Stripe balance transactions per day
-and compares against `payments`/`refunds`/`transfers` sums; mismatches above
-`system_settings.billing.reconciliation_alert_threshold_cents` alert. `webhook_events` rows
-in `failed`/`received` older than 15 min feed the dead-letter re-processor; missing-webhook
-recovery re-fetches recent events from Stripe's events API.
+`POST /v1/jobs/reconcile-payments` (cron + job token, idempotent, runbook:
+`INCIDENT_RESPONSE.md`) performs three passes:
+
+1. **Dead-letter replay** — `webhook_events` rows in `failed`, or stuck in
+   `received`/`processing` for 15+ minutes, are re-dispatched through the same idempotent
+   handlers; after 8 attempts a row is abandoned and logged for manual handling.
+2. **Order expiry** — unpaid orders are moved to `expired` one hour after their checkout
+   window closed (the margin tolerates late webhooks).
+3. **Invariant check** — paid orders without an enrollment after 15 minutes are counted and
+   logged as an alert condition; the job never grants access itself.
+
+Still pending: daily Stripe balance-transaction comparison against
+`payments`/`refunds`/`transfers` sums (alert above
+`system_settings.billing.reconciliation_alert_threshold_cents`) and missing-webhook recovery
+via Stripe's events API — both need the provider's list APIs.
 
 ## Invariants (tested)
 

@@ -34,32 +34,7 @@ export async function processStripeEvent(
   const webhookRowId: string = claim.rows[0].id;
 
   try {
-    let handled = true;
-    switch (event.type) {
-      case "checkout.session.completed":
-        await handleCheckoutCompleted(pool, log, event.data as CheckoutSessionData);
-        break;
-      case "charge.refunded":
-        await handleChargeRefunded(pool, event.data as ChargeData);
-        break;
-      case "charge.dispute.created":
-        await handleDisputeCreated(pool, event.data as DisputeData);
-        break;
-      case "account.updated":
-        await handleAccountUpdated(pool, event.data as AccountData);
-        break;
-      case "customer.subscription.created":
-      case "customer.subscription.updated":
-      case "customer.subscription.deleted":
-        await handleSubscriptionChanged(pool, event.data as SubscriptionData);
-        break;
-      case "invoice.paid":
-      case "invoice.payment_failed":
-        await handleInvoiceEvent(pool, event.type, event.data as InvoiceData);
-        break;
-      default:
-        handled = false;
-    }
+    const handled = await dispatchStripeEvent(pool, log, event.type, event.data);
     await pool.query(
       `update webhook_events set status = 'processed', processed_at = now(), attempts = attempts + 1
        where id = $1`,
@@ -73,6 +48,44 @@ export async function processStripeEvent(
       [webhookRowId, (err as Error).message.slice(0, 1000)],
     );
     throw err;
+  }
+}
+
+/**
+ * Routes a verified (or previously persisted) event to its handler. Handlers
+ * are idempotent, so the reconciliation job may replay dead-lettered events
+ * through this same path. Returns false for event types we ignore.
+ */
+export async function dispatchStripeEvent(
+  pool: pg.Pool,
+  log: Logger,
+  type: string,
+  data: unknown,
+): Promise<boolean> {
+  switch (type) {
+    case "checkout.session.completed":
+      await handleCheckoutCompleted(pool, log, data as CheckoutSessionData);
+      return true;
+    case "charge.refunded":
+      await handleChargeRefunded(pool, data as ChargeData);
+      return true;
+    case "charge.dispute.created":
+      await handleDisputeCreated(pool, data as DisputeData);
+      return true;
+    case "account.updated":
+      await handleAccountUpdated(pool, data as AccountData);
+      return true;
+    case "customer.subscription.created":
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted":
+      await handleSubscriptionChanged(pool, data as SubscriptionData);
+      return true;
+    case "invoice.paid":
+    case "invoice.payment_failed":
+      await handleInvoiceEvent(pool, type, data as InvoiceData);
+      return true;
+    default:
+      return false;
   }
 }
 

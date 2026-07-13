@@ -23,6 +23,7 @@ import {
 } from "./services/trainerApplications.js";
 import { processStripeEvent } from "./services/webhooks.js";
 import { runActiveClientBilling } from "./services/activeClientBilling.js";
+import { runPaymentReconciliation } from "./services/reconciliation.js";
 
 export interface AppDeps {
   env: ApiEnv;
@@ -309,6 +310,16 @@ export function buildApp(deps: AppDeps): Hono {
     const result = await runActiveClientBilling(
       pool,
       deps.subscriptionGateway,
+      withCorrelation(log, c.get("correlationId")),
+    );
+    return c.json(result);
+  });
+
+  // Payment reconciliation: dead-letter replay, order expiry, invariant
+  // checks. Idempotent; see services/reconciliation.ts.
+  app.post("/v1/jobs/reconcile-payments", jobAuth(env.JOB_TOKEN), async (c) => {
+    const result = await runPaymentReconciliation(
+      pool,
       withCorrelation(log, c.get("correlationId")),
     );
     return c.json(result);
