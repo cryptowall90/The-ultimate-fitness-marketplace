@@ -11,6 +11,7 @@ import { SupabaseStorageProvider, type MediaStorageProvider } from "@fitmarket/m
 import { loadEnv } from "./env.js";
 import { createPool } from "./db.js";
 import { buildApp } from "./app.js";
+import { ChainGeocoder, NominatimGeocoder, StaticCityGeocoder } from "./services/geocoding.js";
 
 const env = loadEnv(); // throws (fails closed) when secrets are missing
 const log = createLogger({ service: "fitmarket-api" });
@@ -42,6 +43,12 @@ const app = buildApp({
   connectGateway: new StripeConnectGateway(stripe),
   webhookVerifier: new StripeWebhookVerifier(stripe, env.STRIPE_WEBHOOK_SECRET),
   mediaStorage,
+  // Launch cities resolve locally; the external adapter only exists when a
+  // base URL is configured (allowlisted egress per docs/GEOGRAPHIC_SEARCH.md).
+  geocoder: new ChainGeocoder([
+    new StaticCityGeocoder(),
+    ...(env.GEOCODER_URL ? [new NominatimGeocoder(env.GEOCODER_URL, log)] : []),
+  ]),
 });
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
