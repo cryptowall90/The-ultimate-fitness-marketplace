@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-13 (continuation session: trainer application + admin approval +
 reviews UI + program builder + payment reconciliation job + web chat + favorites +
-trainer billing/payout screens + CRM core screens)
+trainer billing/payout screens + CRM core screens + moderation portal + client coaching view)
 
 Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer done, UI pending) ·
 ⬜ not started
@@ -105,14 +105,21 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ CRM core screens (/trainer/crm overview with roster + open tasks; client detail with
   private notes, client-visible notes/assignments, tasks add/complete, check-in history) —
   new shared Zod schemas in @fitmarket/validation (crm.ts); owner RLS on every query
-- ⬜ CRM Leads/Calendar/Forms/Analytics screens; client-side view of shared notes
+- ✅ Client coaching view (/coaching): shared notes/assignments with mark-complete, check-in
+  schedule — client-side RLS policies only
+- ⬜ CRM Leads/Calendar/Forms/Analytics screens
 
 ## Phase 8 — Administration & compliance: 🟡 foundations
 
 - ✅ reports/moderation_cases with case-gated conversation access; immutable
   admin_actions/audit_logs; feature flags; system settings; job runs; export/deletion
   requests; consent records
-- ⬜ Admin portal UI, export/deletion job workers, appeals workflow UI
+- ✅ Moderation portal core: /admin/moderation queue UI + services/api
+  /v1/moderation/reports list/dismiss/action endpoints (moderator role check; content
+  removal for review/message targets in service context with rating recompute; every
+  decision writes admin_actions) — 5 integration tests
+- ⬜ Moderation case management/escalation UI, admin portal (settings/flags), export/
+  deletion job workers, appeals workflow UI
 
 ## Phase 9 — Hardening: ⬜ (targets and gates documented in TESTING/DEPLOYMENT)
 
@@ -128,7 +135,7 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 | `pnpm format:check` | ✅ |
 | Unit tests (domain 32, validation 16, payments 6, media 9, observability 2) | ✅ 65 passed |
 | DB/RLS tests vs real PG16+PostGIS | ✅ 51 passed |
-| API integration tests (webhooks/billing/admin approvals/reconciliation) | ✅ 25 passed |
+| API integration tests (webhooks/billing/approvals/reconciliation/moderation) | ✅ 30 passed |
 | `next build` + bundle secret scan | ✅ |
 | `pnpm --filter @fitmarket/api build` | ✅ |
 | Mobile `tsc --noEmit` | ✅ (react type resolution pinned in tsconfig — pnpm hidden-hoist

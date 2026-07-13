@@ -12,3 +12,16 @@ export const adminTrainerDecisionSchema = z
     reason: shortText(2000, 3),
   })
   .strict();
+
+/**
+ * Moderator decision on a report. `removeContent` additionally removes the
+ * reported content (supported for review and message targets); every decision
+ * writes an admin_actions row.
+ */
+export const moderationDecisionSchema = z
+  .object({
+    reportId: uuid,
+    reason: shortText(2000, 3),
+    removeContent: z.boolean().default(false),
+  })
+  .strict();

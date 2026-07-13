@@ -10,7 +10,11 @@ import type {
   WebhookVerifier,
   ConnectGateway,
 } from "@fitmarket/payments";
-import { adminTrainerDecisionSchema, createCheckoutSchema } from "@fitmarket/validation";
+import {
+  adminTrainerDecisionSchema,
+  createCheckoutSchema,
+  moderationDecisionSchema,
+} from "@fitmarket/validation";
 import type { ApiEnv } from "./env.js";
 import { bearerAuth, jobAuth, requireAppRole } from "./auth.js";
 import { TokenBucketLimiter, rateLimit } from "./ratelimit.js";
@@ -21,6 +25,12 @@ import {
   listSubmittedApplications,
   rejectTrainerApplication,
 } from "./services/trainerApplications.js";
+import {
+  ModerationError,
+  actionReport,
+  dismissReport,
+  listOpenReports,
+} from "./services/moderation.js";
 import { processStripeEvent } from "./services/webhooks.js";
 import { runActiveClientBilling } from "./services/activeClientBilling.js";
 import { runPaymentReconciliation } from "./services/reconciliation.js";
@@ -302,6 +312,54 @@ export function buildApp(deps: AppDeps): Hono {
 
   app.post("/v1/admin/trainer-applications/:trainerId/approve", ...adminGuard, decide("approve"));
   app.post("/v1/admin/trainer-applications/:trainerId/reject", ...adminGuard, decide("reject"));
+
+  // ---------------------------------------------------------------------
+  // Moderation: reports queue + decisions. Content removal must run in
+  // service context (review/message guard triggers), and every decision
+  // writes an immutable admin_actions row. Admins satisfy the moderator
+  // requirement.
+  // ---------------------------------------------------------------------
+  const moderatorGuard = [
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    requireAppRole(pool, "moderator"),
+  ] as const;
+
+  app.get("/v1/moderation/reports", ...moderatorGuard, async (c) => {
+    const reports = await listOpenReports(pool);
+    return c.json({ reports });
+  });
+
+  const decideReport = (kind: "dismiss" | "action") => async (c: HonoContext) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = moderationDecisionSchema.safeParse({
+      ...(body ?? {}),
+      reportId: c.req.param("reportId"),
+    });
+    if (!parsed.success) {
+      return c.json({ error: { code: "invalid_request", message: "Invalid request body" } }, 400);
+    }
+    const input = {
+      reportId: parsed.data.reportId,
+      moderatorId: c.get("user").userId,
+      reason: parsed.data.reason,
+      removeContent: parsed.data.removeContent,
+    };
+    try {
+      const result =
+        kind === "dismiss" ? await dismissReport(pool, input) : await actionReport(pool, input);
+      return c.json(result);
+    } catch (err) {
+      if (err instanceof ModerationError) {
+        const status =
+          err.code === "report_not_found" ? 404 : err.code === "already_decided" ? 409 : 400;
+        return c.json({ error: { code: err.code, message: err.message } }, status);
+      }
+      throw err;
+    }
+  };
+
+  app.post("/v1/moderation/reports/:reportId/dismiss", ...moderatorGuard, decideReport("dismiss"));
+  app.post("/v1/moderation/reports/:reportId/action", ...moderatorGuard, decideReport("action"));
 
   // ---------------------------------------------------------------------
   // Scheduled jobs (invoked by cron with the job token).

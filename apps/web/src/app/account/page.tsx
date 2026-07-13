@@ -168,6 +168,9 @@ export default async function AccountPage({
 
       <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
         <h2>Purchases</h2>
+        <p>
+          <a href="/coaching">Your coaching — notes, assignments and check-ins →</a>
+        </p>
         {(orders ?? []).length === 0 ? (
           <p>No purchases yet.</p>
         ) : (
