@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { publicMediaUrl } from "@/lib/media";
 import { BuyProgramButton } from "./buy-button";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +64,7 @@ export default async function TrainerProfilePage({
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, bio")
+      .select("display_name, bio, avatar_media_id")
       .eq("user_id", trainer.user_id)
       .maybeSingle(),
     supabase
@@ -107,9 +108,29 @@ export default async function TrainerProfilePage({
     : { data: null };
   const favorited = Boolean(favorite);
 
+  // Published public-profile media is world-readable via RLS.
+  const { data: avatarMedia } = profile?.avatar_media_id
+    ? await supabase
+        .from("media_objects")
+        .select("bucket, object_key")
+        .eq("id", profile.avatar_media_id)
+        .eq("status", "published")
+        .eq("visibility", "public_profile")
+        .maybeSingle()
+    : { data: null };
+
   return (
     <article>
       <header>
+        {avatarMedia && (
+          <img
+            src={publicMediaUrl(avatarMedia.bucket, avatarMedia.object_key)}
+            alt={`${profile?.display_name ?? "Trainer"} profile photo`}
+            width={112}
+            height={112}
+            style={{ borderRadius: "50%", objectFit: "cover" }}
+          />
+        )}
         <h1>{profile?.display_name ?? "Trainer"}</h1>
         <p>{trainer.headline}</p>
         <div className="meta" style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>

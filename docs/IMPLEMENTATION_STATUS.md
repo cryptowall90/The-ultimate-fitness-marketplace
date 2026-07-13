@@ -36,7 +36,10 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
   quota from system_settings, random object keys) + /complete (server reads the bytes back,
   magic-byte signature must match the declared type; images publish, documents quarantine
   for the scan job; failures are rejected and the object deleted) — Supabase Storage
-  provider implementation + 7 integration tests. Avatar/credential upload UI pending
+  provider implementation + 7 integration tests
+- ✅ Avatar upload UI on /account (client-side resize/re-encode strips EXIF, signed-upload
+  flow, avatar_media_id set only after server verification publishes) + avatar display on
+  the public trainer profile. Credential-document upload UI pending
 - ⬜ TOTP MFA enrollment UI (Supabase supports; enforcement flag seeded)
 
 ## Phase 2 — Search: 🟡 core done

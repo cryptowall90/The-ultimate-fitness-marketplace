@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { updateClientProfileSchema, updateProfileSchema } from "@fitmarket/validation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { publicMediaUrl } from "@/lib/media";
+import { AvatarUpload } from "@/components/avatar-upload";
 
 export const metadata: Metadata = { title: "Your account" };
 export const dynamic = "force-dynamic";
@@ -66,7 +68,11 @@ export default async function AccountPage({
   const params = await searchParams;
   const [{ data: profile }, { data: clientProfile }, { data: orders }, { data: favorites }] =
     await Promise.all([
-      supabase.from("profiles").select("display_name, bio").eq("user_id", user.id).maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("display_name, bio, avatar_media_id")
+        .eq("user_id", user.id)
+        .maybeSingle(),
       supabase
         .from("client_profiles")
         .select("fitness_goals, preferred_training_style, general_availability")
@@ -89,6 +95,17 @@ export default async function AccountPage({
         .limit(20),
     ]);
 
+  // Resolve the avatar's public URL (owner-readable media row; public bucket).
+  const { data: avatarMedia } = profile?.avatar_media_id
+    ? await supabase
+        .from("media_objects")
+        .select("bucket, object_key, status")
+        .eq("id", profile.avatar_media_id)
+        .eq("status", "published")
+        .maybeSingle()
+    : { data: null };
+  const avatarUrl = avatarMedia ? publicMediaUrl(avatarMedia.bucket, avatarMedia.object_key) : null;
+
   return (
     <div>
       <h1>Your account</h1>
@@ -105,6 +122,7 @@ export default async function AccountPage({
 
       <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
         <h2>Profile</h2>
+        <AvatarUpload currentUrl={avatarUrl} />
         <form action={updateProfileAction} className="form-stack">
           <div className="field">
             <label htmlFor="displayName">Display name</label>
