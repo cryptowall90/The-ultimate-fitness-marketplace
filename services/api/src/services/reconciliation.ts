@@ -32,6 +32,7 @@ export interface ReconciliationResult {
   deadLettersAbandoned: number;
   ordersExpired: number;
   paidOrdersMissingEnrollment: number;
+  staleRateLimitBucketsPruned: number;
 }
 
 export async function runPaymentReconciliation(
@@ -53,6 +54,7 @@ export async function runPaymentReconciliation(
       deadLettersAbandoned: 0,
       ordersExpired: 0,
       paidOrdersMissingEnrollment: 0,
+      staleRateLimitBucketsPruned: 0,
     };
   }
   const jobId: string = jobRes.rows[0].id;
@@ -63,6 +65,7 @@ export async function runPaymentReconciliation(
     deadLettersAbandoned: 0,
     ordersExpired: 0,
     paidOrdersMissingEnrollment: 0,
+    staleRateLimitBucketsPruned: 0,
   };
 
   try {
@@ -135,6 +138,13 @@ export async function runPaymentReconciliation(
         "paid orders without enrollments detected — webhook path lost work",
       );
     }
+
+    // 4. Housekeeping: prune idle durable rate-limit buckets (fully refilled
+    // after a day of inactivity anyway, so deleting them changes nothing).
+    const pruned = await pool.query(
+      `delete from rate_limit_buckets where updated_at < now() - interval '1 day'`,
+    );
+    result.staleRateLimitBucketsPruned = pruned.rowCount ?? 0;
 
     await pool.query(
       `update scheduled_job_runs

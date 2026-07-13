@@ -19,7 +19,7 @@ import {
 import type { MediaStorageProvider } from "@fitmarket/media";
 import type { ApiEnv } from "./env.js";
 import { bearerAuth, jobAuth, requireAppRole } from "./auth.js";
-import { TokenBucketLimiter, rateLimit } from "./ratelimit.js";
+import { PgTokenBucketLimiter, TokenBucketLimiter, rateLimit } from "./ratelimit.js";
 import { CheckoutError, createProgramCheckout } from "./services/checkout.js";
 import {
   TrainerApplicationError,
@@ -53,8 +53,10 @@ export function buildApp(deps: AppDeps): Hono {
   const { env, pool, log } = deps;
   const app = new Hono();
 
+  // Per-IP: in-memory first line (edge rate limiting sits in front anyway).
   const ipLimiter = new TokenBucketLimiter(60, 1); // 60 burst, 1/s refill
-  const checkoutLimiter = new TokenBucketLimiter(10, 0.1); // 10 burst, 6/min
+  // Per-account on expensive routes: durable, holds across instances.
+  const checkoutLimiter = new PgTokenBucketLimiter(pool, 10, 0.1, log); // 10 burst, 6/min
 
   // Correlation ID + request logging (redacting logger; no bodies logged).
   app.use("*", async (c, next) => {

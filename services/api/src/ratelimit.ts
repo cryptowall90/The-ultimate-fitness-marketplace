@@ -1,4 +1,11 @@
 import type { MiddlewareHandler } from "hono";
+import type pg from "pg";
+import type { Logger } from "@fitmarket/observability";
+
+export interface RateLimiter {
+  /** True when the request may proceed (one token consumed). */
+  allow(key: string): boolean | Promise<boolean>;
+}
 
 interface Bucket {
   tokens: number;
@@ -6,12 +13,12 @@ interface Bucket {
 }
 
 /**
- * In-memory token bucket. Suitable for a single-instance modular monolith;
- * Cloudflare provides the edge-level rate limiting in front (docs/SECURITY.md).
- * The interface stays the same if a durable store (e.g. Postgres/Redis) is
- * swapped in for multi-instance deployments.
+ * In-memory token bucket: first line of defense for cheap, high-volume
+ * per-IP limiting (Cloudflare sits in front at the edge). Per-instance by
+ * nature — use PgTokenBucketLimiter where the limit must hold across
+ * instances.
  */
-export class TokenBucketLimiter {
+export class TokenBucketLimiter implements RateLimiter {
   private buckets = new Map<string, Bucket>();
 
   constructor(
@@ -39,7 +46,47 @@ export class TokenBucketLimiter {
   }
 }
 
-export function rateLimit(limiter: TokenBucketLimiter, keyBy: "ip" | "user"): MiddlewareHandler {
+/**
+ * Durable token bucket in Postgres (rate_limit_buckets): one atomic upsert
+ * per check, correct under concurrency across many API instances.
+ *
+ * Denials do not consume tokens or touch updated_at (the conditional UPDATE
+ * simply matches no row), so refill accrues from the last successful take.
+ * On database errors the limiter FAILS OPEN with a logged warning: these
+ * buckets protect expensive routes from abuse, and refusing all checkouts
+ * during a database blip would be the worse failure.
+ */
+export class PgTokenBucketLimiter implements RateLimiter {
+  constructor(
+    private readonly pool: pg.Pool,
+    private readonly capacity: number,
+    private readonly refillPerSecond: number,
+    private readonly log: Logger,
+  ) {}
+
+  async allow(key: string): Promise<boolean> {
+    try {
+      const res = await this.pool.query(
+        `insert into rate_limit_buckets as b (key, tokens, updated_at)
+         values ($1, $2::numeric - 1, now())
+         on conflict (key) do update
+           set tokens = least($2::numeric,
+                              b.tokens + extract(epoch from (now() - b.updated_at)) * $3::numeric) - 1,
+               updated_at = now()
+           where least($2::numeric,
+                       b.tokens + extract(epoch from (now() - b.updated_at)) * $3::numeric) >= 1
+         returning tokens`,
+        [key, this.capacity, this.refillPerSecond],
+      );
+      return (res.rowCount ?? 0) > 0;
+    } catch (err) {
+      this.log.warn({ err: (err as Error).message }, "rate limiter unavailable — failing open");
+      return true;
+    }
+  }
+}
+
+export function rateLimit(limiter: RateLimiter, keyBy: "ip" | "user"): MiddlewareHandler {
   return async (c, next) => {
     const key =
       keyBy === "user"
@@ -49,7 +96,7 @@ export function rateLimit(limiter: TokenBucketLimiter, keyBy: "ip" | "user"): Mi
         : (c.req.header("cf-connecting-ip") ??
           c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
           "unknown");
-    if (!limiter.allow(`${keyBy}:${key}`)) {
+    if (!(await limiter.allow(`${keyBy}:${key}`))) {
       c.header("Retry-After", "30");
       return c.json({ error: { code: "rate_limited", message: "Too many requests" } }, 429);
     }
