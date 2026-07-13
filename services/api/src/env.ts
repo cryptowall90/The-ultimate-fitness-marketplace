@@ -21,6 +21,8 @@ export interface ApiEnv {
   /** bucket names for public-profile vs private media */
   MEDIA_BUCKET_PUBLIC: string;
   MEDIA_BUCKET_PRIVATE: string;
+  /** https base URL of a Nominatim-compatible geocoder; unset = launch cities only */
+  GEOCODER_URL?: string | undefined;
 }
 
 export function loadEnv(source: Record<string, string | undefined> = process.env): ApiEnv {
@@ -39,6 +41,7 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
       SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
       MEDIA_BUCKET_PUBLIC: z.string().min(1).default("public-media"),
       MEDIA_BUCKET_PRIVATE: z.string().min(1).default("private-media"),
+      GEOCODER_URL: z.string().url().startsWith("https://").optional(),
     },
     source,
   );

@@ -15,10 +15,12 @@ import {
   createCheckoutSchema,
   mediaUploadRequestSchema,
   moderationDecisionSchema,
+  trainerServiceLocationSchema,
 } from "@fitmarket/validation";
 import type { MediaStorageProvider } from "@fitmarket/media";
 import type { ApiEnv } from "./env.js";
 import { bearerAuth, jobAuth, requireAppRole } from "./auth.js";
+import { withTransaction } from "./db.js";
 import { PgTokenBucketLimiter, TokenBucketLimiter, rateLimit } from "./ratelimit.js";
 import { CheckoutError, createProgramCheckout } from "./services/checkout.js";
 import {
@@ -34,6 +36,7 @@ import {
   listOpenReports,
 } from "./services/moderation.js";
 import { MediaUploadError, completeUpload, requestUpload } from "./services/mediaUploads.js";
+import type { Geocoder } from "./services/geocoding.js";
 import { processStripeEvent } from "./services/webhooks.js";
 import { runActiveClientBilling } from "./services/activeClientBilling.js";
 import { runPaymentReconciliation } from "./services/reconciliation.js";
@@ -47,6 +50,7 @@ export interface AppDeps {
   connectGateway: ConnectGateway;
   webhookVerifier: WebhookVerifier;
   mediaStorage: MediaStorageProvider;
+  geocoder: Geocoder;
 }
 
 export function buildApp(deps: AppDeps): Hono {
@@ -91,7 +95,7 @@ export function buildApp(deps: AppDeps): Hono {
     "*",
     cors({
       origin: env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()),
-      allowMethods: ["GET", "POST", "OPTIONS"],
+      allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
       allowHeaders: ["Authorization", "Content-Type", "X-Correlation-Id"],
       maxAge: 600,
       credentials: false, // bearer tokens, not cookies — CSRF surface removed
@@ -318,6 +322,103 @@ export function buildApp(deps: AppDeps): Hono {
 
   app.post("/v1/admin/trainer-applications/:trainerId/approve", ...adminGuard, decide("approve"));
   app.post("/v1/admin/trainer-applications/:trainerId/reject", ...adminGuard, decide("reject"));
+
+  // ---------------------------------------------------------------------
+  // Trainer service locations. Creation lives here (not RLS-direct) because
+  // public_point MUST come from server-side geocoding of the city — never
+  // from client-supplied coordinates. exact_address stays private text.
+  // ---------------------------------------------------------------------
+  app.post(
+    "/v1/trainer/locations",
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    rateLimit(checkoutLimiter, "user"),
+    async (c) => {
+      const userId = c.get("user").userId;
+      const body = await c.req.json().catch(() => null);
+      const parsed = trainerServiceLocationSchema.safeParse(body);
+      if (!parsed.success) {
+        return c.json({ error: { code: "invalid_request", message: "Invalid request body" } }, 400);
+      }
+      const trainer = await pool.query(`select 1 from trainer_profiles where user_id = $1`, [
+        userId,
+      ]);
+      if (trainer.rowCount === 0) {
+        return c.json(
+          { error: { code: "not_a_trainer", message: "Trainer profile required" } },
+          403,
+        );
+      }
+      const geo = await deps.geocoder.resolveCity({
+        city: parsed.data.cityName,
+        region: parsed.data.region,
+        countryCode: parsed.data.countryCode,
+      });
+      if (!geo) {
+        return c.json(
+          {
+            error: {
+              code: "city_not_found",
+              message: "We couldn't locate that city — check the spelling and country",
+            },
+          },
+          422,
+        );
+      }
+      const label = `${geo.canonicalName} · ~${Math.round(parsed.data.serviceRadiusKm)} km`;
+      const inserted = await withTransaction(pool, async (tx) => {
+        if (parsed.data.isPrimary) {
+          await tx.query(
+            `update trainer_service_locations set is_primary = false
+             where trainer_id = $1 and is_primary`,
+            [userId],
+          );
+        }
+        const res = await tx.query(
+          `insert into trainer_service_locations
+             (trainer_id, city_name, region, country_code, public_point, exact_address,
+              service_radius_km, service_area_label, is_primary)
+           values ($1, $2, $3, $4,
+                   st_setsrid(st_makepoint($5, $6), 4326)::geography,
+                   $7, $8, $9, $10)
+           returning id`,
+          [
+            userId,
+            parsed.data.cityName,
+            parsed.data.region ?? null,
+            parsed.data.countryCode,
+            geo.lng,
+            geo.lat,
+            parsed.data.exactAddress ?? null,
+            parsed.data.serviceRadiusKm,
+            label,
+            parsed.data.isPrimary,
+          ],
+        );
+        return res.rows[0].id as string;
+      });
+      return c.json({ locationId: inserted, serviceAreaLabel: label });
+    },
+  );
+
+  app.delete(
+    "/v1/trainer/locations/:locationId",
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    rateLimit(checkoutLimiter, "user"),
+    async (c) => {
+      const locationId = c.req.param("locationId");
+      if (!/^[0-9a-f-]{36}$/.test(locationId)) {
+        return c.json({ error: { code: "invalid_request", message: "Invalid location id" } }, 400);
+      }
+      const res = await pool.query(
+        `delete from trainer_service_locations where id = $1 and trainer_id = $2 returning id`,
+        [locationId, c.get("user").userId],
+      );
+      if (res.rowCount === 0) {
+        return c.json({ error: { code: "not_found", message: "Location not found" } }, 404);
+      }
+      return c.json({ deleted: true });
+    },
+  );
 
   // ---------------------------------------------------------------------
   // Media uploads: signed-URL flow. Request → direct PUT to storage →

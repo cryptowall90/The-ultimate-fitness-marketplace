@@ -6,6 +6,7 @@ import { createLogger } from "@fitmarket/observability";
 import { StripeWebhookVerifier, createStripeClient } from "@fitmarket/payments";
 import { Writable } from "node:stream";
 import { buildApp, type AppDeps } from "../src/app.js";
+import { StaticCityGeocoder } from "../src/services/geocoding.js";
 import type { ApiEnv } from "../src/env.js";
 import {
   FakeConnectGateway,
@@ -61,6 +62,7 @@ export function createTestApp(): TestApp {
     connectGateway: connect,
     webhookVerifier: new StripeWebhookVerifier(stripe, TEST_WEBHOOK_SECRET),
     mediaStorage,
+    geocoder: new StaticCityGeocoder(), // deterministic launch cities, no egress
   };
   return {
     app: buildApp(deps),

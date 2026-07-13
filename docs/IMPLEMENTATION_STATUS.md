@@ -52,7 +52,15 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Online search with trigram/FTS relevance + Bayesian-rating ranking
 - ✅ Web search page (online + in-person via launch-city table), mobile Discover/Search
 - ✅ Favorites schema + RLS
-- 🟡 External geocoding adapter (contract documented; static launch-city table shipping)
+- ✅ Geocoding adapter per the documented contract: static launch-city resolver (no egress)
+  chained with an optional Nominatim-compatible external adapter (GEOCODER_URL) —
+  allowlisted host, encoded params only, no redirects, 5s timeout, response schema
+  validation, bounded cache — 5 unit tests incl. hostile-input encoding
+- ✅ Trainer location management: /trainer/locations UI + services/api create/delete
+  endpoints; public_point is derived from server-side geocoding (client-supplied
+  coordinates rejected by the strict schema); exact addresses stay private; new primary
+  demotes the old — 6 integration tests incl. end-to-end discoverability via
+  search_trainers_nearby
 - ✅ Favorites UI: save/unsave on trainer profiles, saved-trainers list on /account
   (RLS-scoped; unpublished trainers drop out via the join policy)
 - ⬜ k6 load tests
@@ -150,7 +158,7 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 | `pnpm format:check` | ✅ |
 | Unit tests (domain 32, validation 16, payments 6, media 9, observability 2) | ✅ 65 passed |
 | DB/RLS tests vs real PG16+PostGIS | ✅ 52 passed |
-| API integration tests (webhooks/billing/approvals/reconciliation/moderation/media/ratelimit) | ✅ 42 passed |
+| API integration tests (webhooks/billing/approvals/reconciliation/moderation/media/ratelimit/geo/locations) | ✅ 53 passed |
 | `next build` + bundle secret scan | ✅ |
 | `pnpm --filter @fitmarket/api build` | ✅ |
 | Mobile `tsc --noEmit` | ✅ (react type resolution pinned in tsconfig — pnpm hidden-hoist
@@ -159,5 +167,5 @@ of @types/react is order-dependent between the React 19 web app and React 18 mob
 ## Top remaining risks
 
 1. UI coverage lags the data layer (CRM/admin/chat screens) — tracked per phase above.
-2. Geocoding adapter and Stripe balance-transaction comparison are designed but not coded.
+2. Stripe balance-transaction comparison is designed but not coded.
 3. CSP still allows inline scripts (Next bootstrap) until nonce wiring (Phase 9).
