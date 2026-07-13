@@ -64,20 +64,30 @@ export default async function AccountPage({
   if (!user) redirect("/auth/sign-in?next=/account");
 
   const params = await searchParams;
-  const [{ data: profile }, { data: clientProfile }, { data: orders }] = await Promise.all([
-    supabase.from("profiles").select("display_name, bio").eq("user_id", user.id).maybeSingle(),
-    supabase
-      .from("client_profiles")
-      .select("fitness_goals, preferred_training_style, general_availability")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("orders")
-      .select("id, status, amount_cents, currency, created_at")
-      .eq("client_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(10),
-  ]);
+  const [{ data: profile }, { data: clientProfile }, { data: orders }, { data: favorites }] =
+    await Promise.all([
+      supabase.from("profiles").select("display_name, bio").eq("user_id", user.id).maybeSingle(),
+      supabase
+        .from("client_profiles")
+        .select("fitness_goals, preferred_training_style, general_availability")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("orders")
+        .select("id, status, amount_cents, currency, created_at")
+        .eq("client_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      // Own favorites joined with the trainer's public profile; RLS hides
+      // trainers who have since gone private.
+      supabase
+        .from("favorites")
+        .select("trainer_id, trainer_profiles!inner(slug, headline)")
+        .eq("user_id", user.id)
+        .not("trainer_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
 
   return (
     <div>
@@ -173,6 +183,26 @@ export default async function AccountPage({
                 </a>
               </li>
             ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
+        <h2>Saved trainers</h2>
+        {(favorites ?? []).length === 0 ? (
+          <p>No saved trainers yet — tap “Save trainer” on a profile you like.</p>
+        ) : (
+          <ul>
+            {(favorites ?? []).map((f) => {
+              const tp = Array.isArray(f.trainer_profiles)
+                ? f.trainer_profiles[0]
+                : f.trainer_profiles;
+              return tp ? (
+                <li key={f.trainer_id}>
+                  <a href={`/trainers/${tp.slug}`}>{tp.headline || tp.slug}</a>
+                </li>
+              ) : null;
+            })}
           </ul>
         )}
       </div>

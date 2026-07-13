@@ -1,9 +1,32 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { BuyProgramButton } from "./buy-button";
 
 export const dynamic = "force-dynamic";
+
+async function toggleFavoriteAction(formData: FormData): Promise<void> {
+  "use server";
+  const slug = String(formData.get("slug") ?? "");
+  if (!/^[a-z0-9][a-z0-9-]{1,60}$/.test(slug)) notFound();
+  const trainerId = String(formData.get("trainerId") ?? "");
+  if (!/^[0-9a-f-]{36}$/.test(trainerId)) notFound();
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/auth/sign-in?next=/trainers/${slug}`);
+
+  // RLS: users manage only their own favorites rows.
+  if (formData.get("favorited") === "1") {
+    await supabase.from("favorites").delete().eq("user_id", user.id).eq("trainer_id", trainerId);
+  } else {
+    await supabase.from("favorites").insert({ user_id: user.id, trainer_id: trainerId });
+  }
+  revalidatePath(`/trainers/${slug}`);
+}
 
 export async function generateMetadata({
   params,
@@ -74,6 +97,15 @@ export default async function TrainerProfilePage({
   ]);
 
   const { data: { user } = { user: null } } = await supabase.auth.getUser();
+  const { data: favorite } = user
+    ? await supabase
+        .from("favorites")
+        .select("trainer_id")
+        .eq("user_id", user.id)
+        .eq("trainer_id", trainer.user_id)
+        .maybeSingle()
+    : { data: null };
+  const favorited = Boolean(favorite);
 
   return (
     <article>
@@ -110,6 +142,21 @@ export default async function TrainerProfilePage({
           <p style={{ color: "var(--color-text-muted)" }}>
             Serves: {(locations ?? []).map((l) => l.service_area_label).join(" · ")}
           </p>
+        )}
+        {user && user.id !== trainer.user_id && (
+          <form action={toggleFavoriteAction}>
+            <input type="hidden" name="slug" value={trainer.slug} />
+            <input type="hidden" name="trainerId" value={trainer.user_id} />
+            <input type="hidden" name="favorited" value={favorited ? "1" : "0"} />
+            <button
+              className="btn btn-secondary"
+              type="submit"
+              aria-pressed={favorited}
+              aria-label={favorited ? "Remove trainer from saved" : "Save trainer"}
+            >
+              {favorited ? "★ Saved" : "☆ Save trainer"}
+            </button>
+          </form>
         )}
       </header>
 

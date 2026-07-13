@@ -33,6 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/search">Search</Link>
               <Link href="/search?mode=online">Online coaching</Link>
               <Link href="/trainer/apply">Become a trainer</Link>
+              <Link href="/messages">Messages</Link>
               <Link href="/auth/sign-in">Sign in</Link>
               <Link href="/auth/sign-up" className="btn btn-primary nav-cta">
                 Get started

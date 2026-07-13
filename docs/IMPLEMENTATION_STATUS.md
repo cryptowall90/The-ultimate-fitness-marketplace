@@ -1,7 +1,7 @@
 # Implementation status
 
 Last updated: 2026-07-13 (continuation session: trainer application + admin approval +
-reviews UI + program builder + payment reconciliation job)
+reviews UI + program builder + payment reconciliation job + web chat + favorites)
 
 Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer done, UI pending) ·
 ⬜ not started
@@ -41,7 +41,9 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Web search page (online + in-person via launch-city table), mobile Discover/Search
 - ✅ Favorites schema + RLS
 - 🟡 External geocoding adapter (contract documented; static launch-city table shipping)
-- ⬜ Favorites UI, k6 load tests
+- ✅ Favorites UI: save/unsave on trainer profiles, saved-trainers list on /account
+  (RLS-scoped; unpublished trainers drop out via the join policy)
+- ⬜ k6 load tests
 
 ## Phase 3 — Programs: 🟡 core done
 
@@ -86,7 +88,10 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Mobile conversations list; web review display
 - ✅ Review submission form on the purchase page (enrollment-gated via RLS `can_review`,
   one per enrollment, shared Zod schema on the server action)
-- ⬜ Chat UI (web/mobile) with Realtime, notification adapters wired
+- ✅ Web chat: /messages conversation list + live thread (anon-key client only — RLS gates
+  reads, sends and receipts; Realtime INSERT subscription with reload fallback; read-only
+  banner after expiry; sender id always from the session)
+- ⬜ Mobile chat thread UI, notification adapters wired
 
 ## Phase 7 — CRM: 🟡 schema/RLS complete
 
