@@ -1,5 +1,6 @@
 import { jwtVerify } from "jose";
 import type { MiddlewareHandler } from "hono";
+import type pg from "pg";
 
 export interface AuthenticatedUser {
   userId: string;
@@ -37,6 +38,28 @@ export function bearerAuth(jwtSecret: string): MiddlewareHandler {
     } catch {
       // Uniform response; no detail that helps token forgery.
       return c.json({ error: { code: "unauthorized", message: "Invalid token" } }, 401);
+    }
+    await next();
+  };
+}
+
+/**
+ * Requires a platform role from user_roles for the already-authenticated user.
+ * Must run after bearerAuth. This service connects with privileged database
+ * credentials, so the role check happens here — RLS does not apply.
+ */
+export function requireAppRole(pool: pg.Pool, role: "admin" | "moderator"): MiddlewareHandler {
+  return async (c, next) => {
+    const userId = c.get("user").userId;
+    const res = await pool.query(
+      `select 1 from user_roles where user_id = $1 and role = any($2)`,
+      // admins satisfy moderator-level requirements
+      [userId, role === "moderator" ? ["moderator", "admin"] : ["admin"]],
+    );
+    if (res.rowCount === 0) {
+      // Uniform 404 would leak less, but admin endpoints are not secret;
+      // 403 gives operators an actionable signal without exposing data.
+      return c.json({ error: { code: "forbidden", message: "Insufficient privileges" } }, 403);
     }
     await next();
   };

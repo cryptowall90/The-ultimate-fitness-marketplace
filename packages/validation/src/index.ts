@@ -7,3 +7,4 @@ export * from "./messaging.js";
 export * from "./search.js";
 export * from "./checkout.js";
 export * from "./forms.js";
+export * from "./admin.js";

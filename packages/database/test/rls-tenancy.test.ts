@@ -232,3 +232,52 @@ describe("privilege escalation resistance", () => {
     expect(ids).not.toContain(hidden);
   });
 });
+
+describe("trainer application lifecycle (owner path used by /trainer/apply)", () => {
+  it("owner can draft, submit once, and not edit or resubmit afterwards", async () => {
+    const applicant = await createUser(db, "applicant");
+    const slug = `apply-${applicant.slice(0, 8)}`;
+
+    await db.asCommitted(applicant, (q) =>
+      q(
+        `insert into trainer_profiles (user_id, slug, headline, about)
+         values ($1, $2, 'A headline long enough', 'About text')`,
+        [applicant, slug],
+      ),
+    );
+
+    // draft -> submitted is the only transition the owner may make;
+    // the trigger stamps application_submitted_at.
+    await db.asCommitted(applicant, (q) =>
+      q(
+        `update trainer_profiles set application_status = 'submitted'
+         where user_id = $1 and application_status = 'draft'`,
+        [applicant],
+      ),
+    );
+    const submitted = await db.admin(
+      `select application_status, application_submitted_at
+       from trainer_profiles where user_id = $1`,
+      [applicant],
+    );
+    expect(submitted.rows[0].application_status).toBe("submitted");
+    expect(submitted.rows[0].application_submitted_at).not.toBeNull();
+
+    // No going back to draft, no self-approval from submitted.
+    await expect(
+      db.as(applicant, (q) =>
+        q(`update trainer_profiles set application_status = 'draft' where user_id = $1`, [
+          applicant,
+        ]),
+      ),
+    ).rejects.toThrow(/not permitted/);
+
+    // Another user cannot create a trainer profile in the applicant's name.
+    const impostor = await createUser(db, "impostor");
+    await expect(
+      db.as(impostor, (q) =>
+        q(`insert into trainer_profiles (user_id, slug) values ($1, $2)`, [applicant, `${slug}-i`]),
+      ),
+    ).rejects.toThrow();
+  });
+});

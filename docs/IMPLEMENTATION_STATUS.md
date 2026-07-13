@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: 2026-07-12 (initial build session)
+Last updated: 2026-07-13 (continuation session: trainer application + admin approval + reviews UI)
 
 Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer done, UI pending) ·
 ⬜ not started
@@ -24,8 +24,11 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
   sign-in, password reset — enumeration-resistant
 - ✅ Client profile edit (validated server actions); mobile auth with SecureStore
 - ✅ Media schema + validation library (magic bytes, SVG ban, bombs, quotas, random keys)
-- 🟡 Trainer application UI + admin approval UI (schema, guards and status flow exist;
-  screens pending)
+- ✅ Trainer application UI (`/trainer/apply`: draft profile + specialties + credentials,
+  draft→submitted via RLS/trigger) and admin approval (`/admin/trainer-applications` UI +
+  `services/api /v1/admin/trainer-applications` list/approve/reject with admin role check,
+  trainer role grant, and immutable admin_actions audit rows) — verified by 7 API
+  integration tests + owner-lifecycle RLS test
 - 🟡 Profile-media upload endpoints (library + schema done; signed-upload route pending)
 - ⬜ TOTP MFA enrollment UI (Supabase supports; enforcement flag seeded)
 
@@ -73,7 +76,9 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Reviews: enrollment-gated insert, one-per-enrollment, 1–5 integer, trainer
   response-only guard, moderation history, Bayesian aggregates, public read of published
 - ✅ Mobile conversations list; web review display
-- ⬜ Chat UI (web/mobile) with Realtime, review submission form, notification adapters wired
+- ✅ Review submission form on the purchase page (enrollment-gated via RLS `can_review`,
+  one per enrollment, shared Zod schema on the server action)
+- ⬜ Chat UI (web/mobile) with Realtime, notification adapters wired
 
 ## Phase 7 — CRM: 🟡 schema/RLS complete
 
@@ -102,11 +107,12 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 | `pnpm lint` | ✅ |
 | `pnpm format:check` | ✅ |
 | Unit tests (domain 32, validation 16, payments 6, media 9, observability 2) | ✅ 65 passed |
-| DB/RLS tests vs real PG16+PostGIS | ✅ 49 passed |
-| API integration tests (webhooks/billing) | ✅ 13 passed |
+| DB/RLS tests vs real PG16+PostGIS | ✅ 50 passed |
+| API integration tests (webhooks/billing/admin approvals) | ✅ 20 passed |
 | `next build` + bundle secret scan | ✅ |
 | `pnpm --filter @fitmarket/api build` | ✅ |
-| Mobile `tsc --noEmit` | ✅ |
+| Mobile `tsc --noEmit` | ✅ (react type resolution pinned in tsconfig — pnpm hidden-hoist
+of @types/react is order-dependent between the React 19 web app and React 18 mobile app) |
 
 ## Top remaining risks
 

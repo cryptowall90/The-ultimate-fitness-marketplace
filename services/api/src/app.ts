@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context as HonoContext } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import type pg from "pg";
@@ -10,11 +10,17 @@ import type {
   WebhookVerifier,
   ConnectGateway,
 } from "@fitmarket/payments";
-import { createCheckoutSchema } from "@fitmarket/validation";
+import { adminTrainerDecisionSchema, createCheckoutSchema } from "@fitmarket/validation";
 import type { ApiEnv } from "./env.js";
-import { bearerAuth, jobAuth } from "./auth.js";
+import { bearerAuth, jobAuth, requireAppRole } from "./auth.js";
 import { TokenBucketLimiter, rateLimit } from "./ratelimit.js";
 import { CheckoutError, createProgramCheckout } from "./services/checkout.js";
+import {
+  TrainerApplicationError,
+  approveTrainerApplication,
+  listSubmittedApplications,
+  rejectTrainerApplication,
+} from "./services/trainerApplications.js";
 import { processStripeEvent } from "./services/webhooks.js";
 import { runActiveClientBilling } from "./services/activeClientBilling.js";
 
@@ -251,6 +257,50 @@ export function buildApp(deps: AppDeps): Hono {
       return c.json({ url: session.url });
     },
   );
+
+  // ---------------------------------------------------------------------
+  // Admin: trainer application review. Approval columns are guarded at the
+  // database level (service context only), so decisions must flow through
+  // here — with an admin role check and an immutable audit record.
+  // ---------------------------------------------------------------------
+  const adminGuard = [bearerAuth(env.SUPABASE_JWT_SECRET), requireAppRole(pool, "admin")] as const;
+
+  app.get("/v1/admin/trainer-applications", ...adminGuard, async (c) => {
+    const applications = await listSubmittedApplications(pool);
+    return c.json({ applications });
+  });
+
+  const decide = (action: "approve" | "reject") => async (c: HonoContext) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminTrainerDecisionSchema.safeParse({
+      ...(body ?? {}),
+      trainerId: c.req.param("trainerId"),
+    });
+    if (!parsed.success) {
+      return c.json({ error: { code: "invalid_request", message: "Invalid request body" } }, 400);
+    }
+    const input = {
+      trainerId: parsed.data.trainerId,
+      adminId: c.get("user").userId,
+      reason: parsed.data.reason,
+    };
+    try {
+      const result =
+        action === "approve"
+          ? await approveTrainerApplication(pool, input)
+          : await rejectTrainerApplication(pool, input);
+      return c.json(result);
+    } catch (err) {
+      if (err instanceof TrainerApplicationError) {
+        const status = err.code === "application_not_found" ? 404 : 409;
+        return c.json({ error: { code: err.code, message: err.message } }, status);
+      }
+      throw err;
+    }
+  };
+
+  app.post("/v1/admin/trainer-applications/:trainerId/approve", ...adminGuard, decide("approve"));
+  app.post("/v1/admin/trainer-applications/:trainerId/reject", ...adminGuard, decide("reject"));
 
   // ---------------------------------------------------------------------
   // Scheduled jobs (invoked by cron with the job token).
