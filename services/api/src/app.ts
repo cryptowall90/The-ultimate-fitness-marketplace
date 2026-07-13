@@ -13,8 +13,10 @@ import type {
 import {
   adminTrainerDecisionSchema,
   createCheckoutSchema,
+  mediaUploadRequestSchema,
   moderationDecisionSchema,
 } from "@fitmarket/validation";
+import type { MediaStorageProvider } from "@fitmarket/media";
 import type { ApiEnv } from "./env.js";
 import { bearerAuth, jobAuth, requireAppRole } from "./auth.js";
 import { TokenBucketLimiter, rateLimit } from "./ratelimit.js";
@@ -31,6 +33,7 @@ import {
   dismissReport,
   listOpenReports,
 } from "./services/moderation.js";
+import { MediaUploadError, completeUpload, requestUpload } from "./services/mediaUploads.js";
 import { processStripeEvent } from "./services/webhooks.js";
 import { runActiveClientBilling } from "./services/activeClientBilling.js";
 import { runPaymentReconciliation } from "./services/reconciliation.js";
@@ -43,6 +46,7 @@ export interface AppDeps {
   subscriptionGateway: SubscriptionGateway;
   connectGateway: ConnectGateway;
   webhookVerifier: WebhookVerifier;
+  mediaStorage: MediaStorageProvider;
 }
 
 export function buildApp(deps: AppDeps): Hono {
@@ -312,6 +316,69 @@ export function buildApp(deps: AppDeps): Hono {
 
   app.post("/v1/admin/trainer-applications/:trainerId/approve", ...adminGuard, decide("approve"));
   app.post("/v1/admin/trainer-applications/:trainerId/reject", ...adminGuard, decide("reject"));
+
+  // ---------------------------------------------------------------------
+  // Media uploads: signed-URL flow. Request → direct PUT to storage →
+  // complete (server reads the bytes back and verifies the magic-byte
+  // signature before anything can be published). See docs/MEDIA_PIPELINE.md.
+  // ---------------------------------------------------------------------
+  const mediaBuckets = { public: env.MEDIA_BUCKET_PUBLIC, private: env.MEDIA_BUCKET_PRIVATE };
+  const mediaError = (c: HonoContext, err: unknown) => {
+    if (err instanceof MediaUploadError) {
+      const status =
+        err.code === "upload_not_found" ? 404 : err.code === "verification_failed" ? 422 : 400;
+      return c.json({ error: { code: err.code, message: err.message } }, status);
+    }
+    throw err;
+  };
+
+  app.post(
+    "/v1/media/uploads",
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    rateLimit(checkoutLimiter, "user"),
+    async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const parsed = mediaUploadRequestSchema.safeParse(body);
+      if (!parsed.success) {
+        return c.json({ error: { code: "invalid_request", message: "Invalid request body" } }, 400);
+      }
+      try {
+        const result = await requestUpload(pool, deps.mediaStorage, mediaBuckets, {
+          ownerId: c.get("user").userId,
+          kind: parsed.data.kind,
+          contentType: parsed.data.contentType,
+          byteSize: parsed.data.byteSize,
+          ...(parsed.data.originalFilename !== undefined
+            ? { originalFilename: parsed.data.originalFilename }
+            : {}),
+        });
+        return c.json(result);
+      } catch (err) {
+        return mediaError(c, err);
+      }
+    },
+  );
+
+  app.post(
+    "/v1/media/uploads/:mediaId/complete",
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    rateLimit(checkoutLimiter, "user"),
+    async (c) => {
+      const mediaId = c.req.param("mediaId");
+      if (!/^[0-9a-f-]{36}$/.test(mediaId)) {
+        return c.json({ error: { code: "invalid_request", message: "Invalid media id" } }, 400);
+      }
+      try {
+        const result = await completeUpload(pool, deps.mediaStorage, {
+          ownerId: c.get("user").userId,
+          mediaId,
+        });
+        return c.json(result);
+      } catch (err) {
+        return mediaError(c, err);
+      }
+    },
+  );
 
   // ---------------------------------------------------------------------
   // Moderation: reports queue + decisions. Content removal must run in

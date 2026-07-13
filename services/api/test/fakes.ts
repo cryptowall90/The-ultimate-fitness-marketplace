@@ -6,6 +6,11 @@ import type {
   PaymentGateway,
   SubscriptionGateway,
 } from "@fitmarket/payments";
+import type {
+  MediaStorageProvider,
+  SignedDownloadUrl,
+  SignedUploadAuthorization,
+} from "@fitmarket/media";
 
 export class FakePaymentGateway implements PaymentGateway {
   sessions: CheckoutSessionRequest[] = [];
@@ -95,5 +100,64 @@ export class FakeConnectGateway implements ConnectGateway {
       disabledReason: null,
       requirementsDue: [],
     };
+  }
+}
+
+/** In-memory storage: tests "upload" by writing bytes into `objects`. */
+export class FakeMediaStorageProvider implements MediaStorageProvider {
+  readonly name = "supabase_storage" as const;
+  objects = new Map<string, Uint8Array>();
+  deleted: string[] = [];
+
+  private key(bucket: string, objectKey: string): string {
+    return `${bucket}/${objectKey}`;
+  }
+
+  put(bucket: string, objectKey: string, bytes: Uint8Array): void {
+    this.objects.set(this.key(bucket, objectKey), bytes);
+  }
+
+  async createSignedUpload(req: {
+    bucket: string;
+    objectKey: string;
+    contentType: string;
+    maxBytes: number;
+    expiresInSeconds: number;
+  }): Promise<SignedUploadAuthorization> {
+    return {
+      url: `https://storage.fake.test/upload/${req.bucket}/${req.objectKey}`,
+      method: "PUT",
+      headers: { "content-type": req.contentType },
+      objectKey: req.objectKey,
+      expiresAt: new Date(Date.now() + req.expiresInSeconds * 1000),
+      maxBytes: req.maxBytes,
+    };
+  }
+
+  async createSignedDownload(req: {
+    bucket: string;
+    objectKey: string;
+    expiresInSeconds: number;
+  }): Promise<SignedDownloadUrl> {
+    return {
+      url: `https://storage.fake.test/download/${req.bucket}/${req.objectKey}`,
+      expiresAt: new Date(Date.now() + req.expiresInSeconds * 1000),
+    };
+  }
+
+  async getObject(req: {
+    bucket: string;
+    objectKey: string;
+    maxBytes: number;
+  }): Promise<Uint8Array> {
+    const bytes = this.objects.get(this.key(req.bucket, req.objectKey));
+    if (!bytes) throw new Error("object not found");
+    if (bytes.byteLength > req.maxBytes) throw new Error("object exceeds maximum size");
+    return bytes;
+  }
+
+  async deleteObject(req: { bucket: string; objectKey: string }): Promise<void> {
+    this.deleted.push(this.key(req.bucket, req.objectKey));
+    this.objects.delete(this.key(req.bucket, req.objectKey));
   }
 }

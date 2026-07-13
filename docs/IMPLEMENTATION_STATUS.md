@@ -2,7 +2,8 @@
 
 Last updated: 2026-07-13 (continuation session: trainer application + admin approval +
 reviews UI + program builder + payment reconciliation job + web chat + favorites +
-trainer billing/payout screens + CRM core screens + moderation portal + client coaching view)
+trainer billing/payout screens + CRM core screens + moderation portal + client coaching view +
+media signed-upload flow)
 
 Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer done, UI pending) ·
 ⬜ not started
@@ -31,7 +32,11 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
   `services/api /v1/admin/trainer-applications` list/approve/reject with admin role check,
   trainer role grant, and immutable admin_actions audit rows) — verified by 7 API
   integration tests + owner-lifecycle RLS test
-- 🟡 Profile-media upload endpoints (library + schema done; signed-upload route pending)
+- ✅ Media signed-upload flow: POST /v1/media/uploads (per-kind mime/size policy, per-user
+  quota from system_settings, random object keys) + /complete (server reads the bytes back,
+  magic-byte signature must match the declared type; images publish, documents quarantine
+  for the scan job; failures are rejected and the object deleted) — Supabase Storage
+  provider implementation + 7 integration tests. Avatar/credential upload UI pending
 - ⬜ TOTP MFA enrollment UI (Supabase supports; enforcement flag seeded)
 
 ## Phase 2 — Search: 🟡 core done
@@ -135,7 +140,7 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 | `pnpm format:check` | ✅ |
 | Unit tests (domain 32, validation 16, payments 6, media 9, observability 2) | ✅ 65 passed |
 | DB/RLS tests vs real PG16+PostGIS | ✅ 51 passed |
-| API integration tests (webhooks/billing/approvals/reconciliation/moderation) | ✅ 30 passed |
+| API integration tests (webhooks/billing/approvals/reconciliation/moderation/media) | ✅ 37 passed |
 | `next build` + bundle secret scan | ✅ |
 | `pnpm --filter @fitmarket/api build` | ✅ |
 | Mobile `tsc --noEmit` | ✅ (react type resolution pinned in tsconfig — pnpm hidden-hoist

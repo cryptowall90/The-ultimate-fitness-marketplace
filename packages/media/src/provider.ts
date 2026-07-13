@@ -33,5 +33,10 @@ export interface MediaStorageProvider {
     objectKey: string;
     expiresInSeconds: number;
   }): Promise<SignedDownloadUrl>;
+  /**
+   * Reads back an uploaded object (server-side magic-byte verification).
+   * Must reject objects larger than maxBytes instead of buffering them.
+   */
+  getObject(req: { bucket: string; objectKey: string; maxBytes: number }): Promise<Uint8Array>;
   deleteObject(req: { bucket: string; objectKey: string }): Promise<void>;
 }

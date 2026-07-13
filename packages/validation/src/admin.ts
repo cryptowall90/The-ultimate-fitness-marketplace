@@ -25,3 +25,17 @@ export const moderationDecisionSchema = z
     removeContent: z.boolean().default(false),
   })
   .strict();
+
+/**
+ * Signed-upload request. Size/mime limits here are a first check only —
+ * the server re-enforces per-kind policy and verifies the actual bytes
+ * (magic-byte sniffing) after upload, before anything is published.
+ */
+export const mediaUploadRequestSchema = z
+  .object({
+    kind: z.enum(["avatar", "credential_document"]),
+    contentType: shortText(100, 3),
+    byteSize: z.number().int().min(1).max(10_485_760),
+    originalFilename: shortText(255).optional(),
+  })
+  .strict();

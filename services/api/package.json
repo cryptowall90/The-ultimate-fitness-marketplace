@@ -14,6 +14,7 @@
   "dependencies": {
     "@fitmarket/config": "workspace:*",
     "@fitmarket/domain": "workspace:*",
+    "@fitmarket/media": "workspace:*",
     "@fitmarket/observability": "workspace:*",
     "@fitmarket/payments": "workspace:*",
     "@fitmarket/types": "workspace:*",
