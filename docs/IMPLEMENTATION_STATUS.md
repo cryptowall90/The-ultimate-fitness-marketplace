@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-13 (continuation session: trainer application + admin approval +
 reviews UI + program builder + payment reconciliation job + web chat + favorites +
-trainer billing/payout screens)
+trainer billing/payout screens + CRM core screens)
 
 Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer done, UI pending) ·
 ⬜ not started
@@ -102,7 +102,10 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ All CRM tables + tenant isolation (pipeline, leads, records, tags, notes split
   private/visible, tasks + dedup-safe reminders, versioned forms, check-ins, measurements,
   progress photos with sharing flag, documents)
-- ⬜ CRM web UI (Overview/Leads/Clients/Calendar/Forms/Analytics screens)
+- ✅ CRM core screens (/trainer/crm overview with roster + open tasks; client detail with
+  private notes, client-visible notes/assignments, tasks add/complete, check-in history) —
+  new shared Zod schemas in @fitmarket/validation (crm.ts); owner RLS on every query
+- ⬜ CRM Leads/Calendar/Forms/Analytics screens; client-side view of shared notes
 
 ## Phase 8 — Administration & compliance: 🟡 foundations
 
