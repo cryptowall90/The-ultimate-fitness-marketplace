@@ -154,8 +154,11 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
   RLS + migration 0014) on all per-account expensive routes — atomic upsert, correct across
   instances, fails open with a logged warning on DB errors; stale buckets pruned by the
   reconciliation job — 5 tests incl. shared-budget-across-instances + RLS denial test
-- ⬜ k6 load tests, CSP nonces (drop 'unsafe-inline'), restore drill, incident drill,
-  accessibility audit, app-store readiness
+- ✅ CSP script nonces: per-request nonce minted in middleware with 'strict-dynamic' —
+  'unsafe-inline' removed from script-src; root layout is force-dynamic so every page can
+  carry a fresh nonce (verified against a running server: header nonce matches the nonce
+  on every script tag, zero unstamped scripts)
+- ⬜ k6 load tests, restore drill, incident drill, accessibility audit, app-store readiness
 
 ## Verification snapshot (this session)
 
@@ -176,4 +179,3 @@ of @types/react is order-dependent between the React 19 web app and React 18 mob
 
 1. UI coverage lags the data layer (CRM/admin/chat screens) — tracked per phase above.
 2. Missing-webhook recovery (Stripe events API) is designed but not coded.
-3. CSP still allows inline scripts (Next bootstrap) until nonce wiring (Phase 9).
