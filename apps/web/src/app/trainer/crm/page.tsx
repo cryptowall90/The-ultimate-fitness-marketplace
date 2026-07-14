@@ -67,6 +67,7 @@ export default async function CrmOverviewPage() {
       <p>
         {activeCount} active {activeCount === 1 ? "client" : "clients"} · {(tasks ?? []).length}{" "}
         open {(tasks ?? []).length === 1 ? "task" : "tasks"} ·{" "}
+        <Link href="/trainer/crm/leads">Leads</Link> ·{" "}
         <Link href="/trainer/programs">Programs</Link> ·{" "}
         <Link href="/trainer/settings/billing">Billing</Link>
       </p>

@@ -1,5 +1,35 @@
 import { z } from "zod";
-import { isoTimestamp, shortText, uuid } from "./primitives.js";
+import { email, isoTimestamp, shortText, uuid } from "./primitives.js";
+
+export const leadStageSchema = z.enum([
+  "lead",
+  "contacted",
+  "consultation_scheduled",
+  "awaiting_payment",
+  "active_client",
+  "paused",
+  "completed",
+  "canceled",
+  "former_client",
+]);
+
+/** Manually tracked prospect (pre-purchase pipeline). */
+export const leadCreateSchema = z
+  .object({
+    displayName: shortText(120, 1),
+    email: email.optional(),
+    source: z.enum(["manual", "inquiry", "purchase", "referral"]).default("manual"),
+    stage: leadStageSchema.default("lead"),
+    notes: shortText(4000),
+  })
+  .strict();
+
+export const leadStageUpdateSchema = z
+  .object({
+    leadId: uuid,
+    stage: leadStageSchema,
+  })
+  .strict();
 
 /** Private trainer note — never visible to the client. */
 export const trainerNoteCreateSchema = z
