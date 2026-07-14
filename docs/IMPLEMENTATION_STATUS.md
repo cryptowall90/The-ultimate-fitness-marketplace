@@ -114,7 +114,11 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Web chat: /messages conversation list + live thread (anon-key client only — RLS gates
   reads, sends and receipts; Realtime INSERT subscription with reload fallback; read-only
   banner after expiry; sender id always from the session)
-- ⬜ Mobile chat thread UI, notification adapters wired
+- ✅ Mobile chat thread (/conversations/[id]): inverted virtualized list, send via RLS
+  (can_message), Realtime INSERT subscription with reload fallback, read receipts,
+  read-only banner after expiry, 44pt targets + accessibility labels; conversations list
+  now resolves counterpart names and links into threads
+- ⬜ Notification adapters wired
 
 ## Phase 7 — CRM: 🟡 schema/RLS complete
 
