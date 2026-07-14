@@ -31,6 +31,13 @@ export const moderationDecisionSchema = z
  * the server re-enforces per-kind policy and verifies the actual bytes
  * (magic-byte sniffing) after upload, before anything is published.
  */
+/** Optional day override for the balance reconciliation job (UTC). */
+export const balanceReconcileSchema = z
+  .object({
+    date: z.string().date().optional(),
+  })
+  .strict();
+
 export const mediaUploadRequestSchema = z
   .object({
     kind: z.enum(["avatar", "credential_document"]),

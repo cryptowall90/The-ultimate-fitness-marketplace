@@ -86,8 +86,10 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Reconciliation job (`/v1/jobs/reconcile-payments`): dead-letter replay through the
   idempotent handlers with an 8-attempt abandonment cap, stale-order expiry (1h margin),
   paid-order-without-enrollment invariant alert — 5 integration tests
-- 🟡 Stripe balance-transaction comparison + missing-webhook recovery (need provider list
-  APIs; documented in PAYMENTS.md)
+- ✅ Stripe balance-transaction comparison (/v1/jobs/reconcile-balance): daily provider
+  sums via BalanceGateway vs webhook-written payments/refunds, threshold alert from
+  system_settings, one run per UTC day — 5 integration tests
+- 🟡 Missing-webhook recovery via Stripe's events API (documented in PAYMENTS.md)
 - ⬜ Trainer-initiated refund UI
 
 ## Phase 5 — Trainer billing: ✅ core complete (verified)
@@ -173,5 +175,5 @@ of @types/react is order-dependent between the React 19 web app and React 18 mob
 ## Top remaining risks
 
 1. UI coverage lags the data layer (CRM/admin/chat screens) — tracked per phase above.
-2. Stripe balance-transaction comparison is designed but not coded.
+2. Missing-webhook recovery (Stripe events API) is designed but not coded.
 3. CSP still allows inline scripts (Next bootstrap) until nonce wiring (Phase 9).

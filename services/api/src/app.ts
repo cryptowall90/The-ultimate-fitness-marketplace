@@ -5,6 +5,7 @@ import type pg from "pg";
 import type { Logger } from "@fitmarket/observability";
 import { newCorrelationId, withCorrelation } from "@fitmarket/observability";
 import type {
+  BalanceGateway,
   PaymentGateway,
   SubscriptionGateway,
   WebhookVerifier,
@@ -12,6 +13,7 @@ import type {
 } from "@fitmarket/payments";
 import {
   adminTrainerDecisionSchema,
+  balanceReconcileSchema,
   createCheckoutSchema,
   mediaUploadRequestSchema,
   moderationDecisionSchema,
@@ -40,6 +42,7 @@ import type { Geocoder } from "./services/geocoding.js";
 import { processStripeEvent } from "./services/webhooks.js";
 import { runActiveClientBilling } from "./services/activeClientBilling.js";
 import { runPaymentReconciliation } from "./services/reconciliation.js";
+import { reconcileBalance } from "./services/balanceReconciliation.js";
 
 export interface AppDeps {
   env: ApiEnv;
@@ -51,6 +54,7 @@ export interface AppDeps {
   webhookVerifier: WebhookVerifier;
   mediaStorage: MediaStorageProvider;
   geocoder: Geocoder;
+  balanceGateway: BalanceGateway;
 }
 
 export function buildApp(deps: AppDeps): Hono {
@@ -545,6 +549,22 @@ export function buildApp(deps: AppDeps): Hono {
 
   // Payment reconciliation: dead-letter replay, order expiry, invariant
   // checks. Idempotent; see services/reconciliation.ts.
+  // Daily Stripe balance-transaction comparison vs the internal ledgers.
+  app.post("/v1/jobs/reconcile-balance", jobAuth(env.JOB_TOKEN), async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = balanceReconcileSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      return c.json({ error: { code: "invalid_request", message: "Invalid request body" } }, 400);
+    }
+    const result = await reconcileBalance(
+      pool,
+      deps.balanceGateway,
+      withCorrelation(log, c.get("correlationId")),
+      parsed.data.date,
+    );
+    return c.json(result ?? { skipped: true });
+  });
+
   app.post("/v1/jobs/reconcile-payments", jobAuth(env.JOB_TOKEN), async (c) => {
     const result = await runPaymentReconciliation(
       pool,

@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
 import { createLogger } from "@fitmarket/observability";
 import {
+  StripeBalanceGateway,
   StripeConnectGateway,
   StripePaymentGateway,
   StripeSubscriptionGateway,
@@ -43,6 +44,7 @@ const app = buildApp({
   connectGateway: new StripeConnectGateway(stripe),
   webhookVerifier: new StripeWebhookVerifier(stripe, env.STRIPE_WEBHOOK_SECRET),
   mediaStorage,
+  balanceGateway: new StripeBalanceGateway(stripe),
   // Launch cities resolve locally; the external adapter only exists when a
   // base URL is configured (allowlisted egress per docs/GEOGRAPHIC_SEARCH.md).
   geocoder: new ChainGeocoder([

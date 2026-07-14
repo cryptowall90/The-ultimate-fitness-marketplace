@@ -51,10 +51,13 @@ an `admin_actions` row — never edits.
 3. **Invariant check** — paid orders without an enrollment after 15 minutes are counted and
    logged as an alert condition; the job never grants access itself.
 
-Still pending: daily Stripe balance-transaction comparison against
-`payments`/`refunds`/`transfers` sums (alert above
-`system_settings.billing.reconciliation_alert_threshold_cents`) and missing-webhook recovery
-via Stripe's events API — both need the provider's list APIs.
+`POST /v1/jobs/reconcile-balance` (cron + job token, one run per UTC day via the job lock)
+sums Stripe balance transactions for the day (`BalanceGateway`, auto-paginated list API)
+and compares gross charge/refund volume against the webhook-written `payments`/`refunds`
+rows. Deltas above `system_settings.billing.reconciliation_alert_threshold_cents` are
+logged as an alert and recorded on the job run; the job reports — it never mutates money.
+
+Still pending: missing-webhook recovery via Stripe's events API.
 
 ## Invariants (tested)
 
