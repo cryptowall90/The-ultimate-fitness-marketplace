@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
+  BalanceGateway,
+  BalanceSums,
   CheckoutSession,
   CheckoutSessionRequest,
   ConnectGateway,
@@ -159,5 +161,16 @@ export class FakeMediaStorageProvider implements MediaStorageProvider {
   async deleteObject(req: { bucket: string; objectKey: string }): Promise<void> {
     this.deleted.push(this.key(req.bucket, req.objectKey));
     this.objects.delete(this.key(req.bucket, req.objectKey));
+  }
+}
+
+/** Settable provider-side sums for balance reconciliation tests. */
+export class FakeBalanceGateway implements BalanceGateway {
+  sums: BalanceSums = { chargesGrossCents: 0, refundsGrossCents: 0 };
+  lastRange: { from: Date; to: Date } | null = null;
+
+  async sumBalanceTransactions(range: { from: Date; to: Date }): Promise<BalanceSums> {
+    this.lastRange = range;
+    return this.sums;
   }
 }

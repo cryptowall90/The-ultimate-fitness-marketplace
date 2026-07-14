@@ -1,5 +1,7 @@
 import Stripe from "stripe";
 import type {
+  BalanceGateway,
+  BalanceSums,
   CheckoutSession,
   CheckoutSessionRequest,
   ConnectGateway,
@@ -241,5 +243,31 @@ export class StripeWebhookVerifier implements WebhookVerifier {
       payload: JSON.parse(rawBody),
       data: event.data.object,
     };
+  }
+}
+
+/**
+ * Sums Stripe balance transactions for reconciliation. Uses the provider's
+ * list API with auto-pagination; only charge/payment and refund types count
+ * toward the gross sums (fees, payouts, adjustments are out of scope here).
+ */
+export class StripeBalanceGateway implements BalanceGateway {
+  constructor(private readonly stripe: Stripe) {}
+
+  async sumBalanceTransactions(range: { from: Date; to: Date }): Promise<BalanceSums> {
+    let chargesGrossCents = 0;
+    let refundsGrossCents = 0;
+    const created = {
+      gte: Math.floor(range.from.getTime() / 1000),
+      lt: Math.floor(range.to.getTime() / 1000),
+    };
+    for await (const txn of this.stripe.balanceTransactions.list({ created, limit: 100 })) {
+      if (txn.type === "charge" || txn.type === "payment") {
+        chargesGrossCents += txn.amount;
+      } else if (txn.type === "refund" || txn.type === "payment_refund") {
+        refundsGrossCents += -txn.amount; // refund amounts are negative
+      }
+    }
+    return { chargesGrossCents, refundsGrossCents };
   }
 }

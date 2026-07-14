@@ -9,6 +9,7 @@ import { buildApp, type AppDeps } from "../src/app.js";
 import { StaticCityGeocoder } from "../src/services/geocoding.js";
 import type { ApiEnv } from "../src/env.js";
 import {
+  FakeBalanceGateway,
   FakeConnectGateway,
   FakeMediaStorageProvider,
   FakePaymentGateway,
@@ -42,6 +43,7 @@ export interface TestApp {
   subscriptions: FakeSubscriptionGateway;
   connect: FakeConnectGateway;
   mediaStorage: FakeMediaStorageProvider;
+  balance: FakeBalanceGateway;
   close: () => Promise<void>;
 }
 
@@ -52,6 +54,7 @@ export function createTestApp(): TestApp {
   const subscriptions = new FakeSubscriptionGateway();
   const connect = new FakeConnectGateway();
   const mediaStorage = new FakeMediaStorageProvider();
+  const balance = new FakeBalanceGateway();
   const sink = new Writable({ write: (_c, _e, cb) => cb() });
   const deps: AppDeps = {
     env: testEnv,
@@ -63,6 +66,7 @@ export function createTestApp(): TestApp {
     webhookVerifier: new StripeWebhookVerifier(stripe, TEST_WEBHOOK_SECRET),
     mediaStorage,
     geocoder: new StaticCityGeocoder(), // deterministic launch cities, no egress
+    balanceGateway: balance,
   };
   return {
     app: buildApp(deps),
@@ -72,6 +76,7 @@ export function createTestApp(): TestApp {
     subscriptions,
     connect,
     mediaStorage,
+    balance,
     close: () => pool.end(),
   };
 }

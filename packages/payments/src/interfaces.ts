@@ -82,6 +82,19 @@ export interface SubscriptionGateway {
   }): Promise<{ providerInvoiceItemId: string }>;
 }
 
+/** Daily provider-side money movement, for ledger reconciliation. */
+export interface BalanceSums {
+  /** Gross successful charge volume in the window, minor units. */
+  chargesGrossCents: number;
+  /** Gross refund volume in the window, minor units (positive number). */
+  refundsGrossCents: number;
+}
+
+export interface BalanceGateway {
+  /** Sums the provider's balance transactions within [from, to). */
+  sumBalanceTransactions(range: { from: Date; to: Date }): Promise<BalanceSums>;
+}
+
 export interface VerifiedWebhookEvent {
   eventId: string;
   type: string;
