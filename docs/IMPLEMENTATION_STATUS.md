@@ -126,7 +126,9 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
   new shared Zod schemas in @fitmarket/validation (crm.ts); owner RLS on every query
 - ✅ Client coaching view (/coaching): shared notes/assignments with mark-complete, check-in
   schedule — client-side RLS policies only
-- ⬜ CRM Leads/Calendar/Forms/Analytics screens
+- ✅ Leads screen (/trainer/crm/leads): open/closed pipeline, add lead (name/email/source/
+  notes via new shared Zod schemas), stage moves, delete — owner RLS on every operation
+- ⬜ CRM Calendar/Forms/Analytics screens
 
 ## Phase 8 — Administration & compliance: 🟡 foundations
 
