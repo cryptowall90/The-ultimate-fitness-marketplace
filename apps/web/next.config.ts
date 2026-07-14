@@ -1,27 +1,11 @@
 import type { NextConfig } from "next";
 
 /**
- * Security headers for every response. CSP is strict: no inline script except
- * Next's hashed bootstrap (handled via 'self' + nonces would require custom
- * document; we keep 'unsafe-inline' OFF for scripts).
+ * Security headers for every response. The CSP itself lives in
+ * src/middleware.ts, which mints a per-request script nonce
+ * ('nonce-…' + 'strict-dynamic', no 'unsafe-inline' for scripts).
  */
 const securityHeaders = [
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'", // Next.js inline runtime; replaced by nonces in hardening phase
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
-      "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co https://api.stripe.com",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "object-src 'none'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

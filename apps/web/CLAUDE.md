@@ -15,6 +15,8 @@ These rules extend the root CLAUDE.md; they never weaken it.
 - Redirect targets from query params must be same-origin relative paths (see
   `safeNextPath` / auth callback). Keep it that way for any new redirect.
 - Auth error messages stay uniform (enumeration-resistant).
-- Security headers + CSP live in next.config.ts; changes require a security review.
+- Security headers live in next.config.ts; the CSP (per-request script nonce +
+  'strict-dynamic', no 'unsafe-inline' for scripts) is minted in src/middleware.ts.
+  Changes to either require a security review.
 - Forms: shared Zod schemas from @fitmarket/validation on every boundary (server actions
   re-validate even when the client validated).

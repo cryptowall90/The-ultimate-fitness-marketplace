@@ -17,6 +17,12 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+// Nonce-based CSP ('strict-dynamic', no 'unsafe-inline') requires every page
+// to be rendered per request — statically prerendered HTML cannot carry a
+// fresh nonce and its scripts would be blocked. Short-TTL CDN caching of the
+// few public pages happens at the edge instead (docs/COST_MODEL.md).
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
