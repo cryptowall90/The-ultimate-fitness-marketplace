@@ -82,6 +82,29 @@ export interface SubscriptionGateway {
   }): Promise<{ providerInvoiceItemId: string }>;
 }
 
+/** Provider-side money movement summary used by the reconciliation job. */
+export interface BalanceTransactionSummary {
+  id: string;
+  /** provider transaction type, e.g. "charge", "payment", "refund", "payout" */
+  type: string;
+  /** signed minor units: positive for money in, negative for money out */
+  amountCents: number;
+  feeCents: number;
+  currency: string;
+  createdAt: Date;
+}
+
+export interface ReconciliationGateway {
+  /**
+   * Lists provider balance transactions created in [createdGte, createdLt).
+   * Implementations must paginate internally and enforce a sane hard cap.
+   */
+  listBalanceTransactions(req: {
+    createdGte: Date;
+    createdLt: Date;
+  }): Promise<BalanceTransactionSummary[]>;
+}
+
 export interface VerifiedWebhookEvent {
   eventId: string;
   type: string;

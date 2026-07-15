@@ -40,11 +40,19 @@ an `admin_actions` row — never edits.
 
 ## Reconciliation
 
-A scheduled job (runbook: `INCIDENT_RESPONSE.md`) lists Stripe balance transactions per day
-and compares against `payments`/`refunds`/`transfers` sums; mismatches above
-`system_settings.billing.reconciliation_alert_threshold_cents` alert. `webhook_events` rows
-in `failed`/`received` older than 15 min feed the dead-letter re-processor; missing-webhook
-recovery re-fetches recent events from Stripe's events API.
+`POST /v1/jobs/reconciliation` (JOB_TOKEN, daily, locked per calendar day via
+`scheduled_job_runs`) does two things (runbook: `INCIDENT_RESPONSE.md`):
+
+1. Dead letters: `webhook_events` rows in `failed`/`received` older than 15 min (and under
+   the attempt cap) are re-dispatched through the same idempotent handlers.
+2. Money comparison: per-day internal sums (`payments` succeeded, `refunds` succeeded) vs
+   Stripe balance transactions (`ReconciliationGateway.listBalanceTransactions`) over a
+   3-day lookback; differences above
+   `system_settings.billing.reconciliation_alert_threshold_cents` are logged at error level
+   and persisted in the job run's metadata.
+
+Missing-webhook recovery (re-fetching recent events from Stripe's events API) remains a
+manual runbook step.
 
 ## Invariants (tested)
 

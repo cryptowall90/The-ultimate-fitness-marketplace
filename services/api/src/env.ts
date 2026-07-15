@@ -14,6 +14,10 @@ export interface ApiEnv {
   /** comma-separated CORS allowlist */
   ALLOWED_ORIGINS: string;
   APP_BASE_URL: string;
+  /** Supabase project URL (storage REST API base) */
+  SUPABASE_URL: string;
+  /** service-role key — server-only, never in any client bundle */
+  SUPABASE_SERVICE_ROLE_KEY: string;
 }
 
 export function loadEnv(source: Record<string, string | undefined> = process.env): ApiEnv {
@@ -28,6 +32,8 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
       JOB_TOKEN: z.string().min(32),
       ALLOWED_ORIGINS: z.string().min(1),
       APP_BASE_URL: z.string().url(),
+      SUPABASE_URL: z.string().url(),
+      SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
     },
     source,
   );

@@ -3,10 +3,12 @@ import { createLogger } from "@fitmarket/observability";
 import {
   StripeConnectGateway,
   StripePaymentGateway,
+  StripeReconciliationGateway,
   StripeSubscriptionGateway,
   StripeWebhookVerifier,
   createStripeClient,
 } from "@fitmarket/payments";
+import { SupabaseStorageProvider } from "@fitmarket/media";
 import { loadEnv } from "./env.js";
 import { createPool } from "./db.js";
 import { buildApp } from "./app.js";
@@ -24,6 +26,8 @@ const app = buildApp({
   subscriptionGateway: new StripeSubscriptionGateway(stripe),
   connectGateway: new StripeConnectGateway(stripe),
   webhookVerifier: new StripeWebhookVerifier(stripe, env.STRIPE_WEBHOOK_SECRET),
+  mediaProvider: new SupabaseStorageProvider(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
+  reconciliationGateway: new StripeReconciliationGateway(stripe),
 });
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {

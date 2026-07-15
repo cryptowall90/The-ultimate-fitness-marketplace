@@ -7,7 +7,13 @@ import { StripeWebhookVerifier, createStripeClient } from "@fitmarket/payments";
 import { Writable } from "node:stream";
 import { buildApp, type AppDeps } from "../src/app.js";
 import type { ApiEnv } from "../src/env.js";
-import { FakeConnectGateway, FakePaymentGateway, FakeSubscriptionGateway } from "./fakes.js";
+import {
+  FakeConnectGateway,
+  FakeMediaProvider,
+  FakePaymentGateway,
+  FakeReconciliationGateway,
+  FakeSubscriptionGateway,
+} from "./fakes.js";
 import { API_TEST_DATABASE_URL } from "./global-setup.js";
 
 export const TEST_JWT_SECRET = "test-jwt-secret-which-is-long-enough-000";
@@ -24,6 +30,8 @@ export const testEnv: ApiEnv = {
   JOB_TOKEN: TEST_JOB_TOKEN,
   ALLOWED_ORIGINS: "http://localhost:3000",
   APP_BASE_URL: "http://localhost:3000",
+  SUPABASE_URL: "http://127.0.0.1:54321",
+  SUPABASE_SERVICE_ROLE_KEY: "service-role-test-key-never-real-0000",
 };
 
 export interface TestApp {
@@ -33,6 +41,8 @@ export interface TestApp {
   payments: FakePaymentGateway;
   subscriptions: FakeSubscriptionGateway;
   connect: FakeConnectGateway;
+  media: FakeMediaProvider;
+  reconciliation: FakeReconciliationGateway;
   close: () => Promise<void>;
 }
 
@@ -42,6 +52,8 @@ export function createTestApp(): TestApp {
   const payments = new FakePaymentGateway();
   const subscriptions = new FakeSubscriptionGateway();
   const connect = new FakeConnectGateway();
+  const media = new FakeMediaProvider();
+  const reconciliation = new FakeReconciliationGateway();
   const sink = new Writable({ write: (_c, _e, cb) => cb() });
   const deps: AppDeps = {
     env: testEnv,
@@ -51,6 +63,8 @@ export function createTestApp(): TestApp {
     subscriptionGateway: subscriptions,
     connectGateway: connect,
     webhookVerifier: new StripeWebhookVerifier(stripe, TEST_WEBHOOK_SECRET),
+    mediaProvider: media,
+    reconciliationGateway: reconciliation,
   };
   return {
     app: buildApp(deps),
@@ -59,6 +73,8 @@ export function createTestApp(): TestApp {
     payments,
     subscriptions,
     connect,
+    media,
+    reconciliation,
     close: () => pool.end(),
   };
 }

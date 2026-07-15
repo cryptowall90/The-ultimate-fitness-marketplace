@@ -1,6 +1,7 @@
 # Implementation status
 
-Last updated: 2026-07-12 (initial build session)
+Last updated: 2026-07-15 (session 2: trainer application/approval flow, media signed
+uploads, reconciliation job)
 
 Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer done, UI pending) ·
 ⬜ not started
@@ -24,9 +25,14 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
   sign-in, password reset — enumeration-resistant
 - ✅ Client profile edit (validated server actions); mobile auth with SecureStore
 - ✅ Media schema + validation library (magic bytes, SVG ban, bombs, quotas, random keys)
-- 🟡 Trainer application UI + admin approval UI (schema, guards and status flow exist;
-  screens pending)
-- 🟡 Profile-media upload endpoints (library + schema done; signed-upload route pending)
+- ✅ Trainer application flow: `/trainer/apply` (draft save/submit with shared Zod schema,
+  status cards for submitted/approved/rejected; owner draft→submitted transition RLS-tested)
+- ✅ Admin approval: `/admin/trainers` (web) + services/api
+  `GET/POST /v1/admin/trainer-applications[...]` — admin-role checked server-side, decision
+  audited in `admin_actions`, approval grants trainer role + publishes (10 API tests)
+- ✅ Media signed-upload endpoints: `POST /v1/media/uploads` (+ `/:id/complete`) with quota,
+  magic-byte verification at finalize, `SupabaseStorageProvider` (fetch-based, no new deps)
+- ⬜ Media publish worker (quarantined → processing → published re-encode/variants)
 - ⬜ TOTP MFA enrollment UI (Supabase supports; enforcement flag seeded)
 
 ## Phase 2 — Search: 🟡 core done
@@ -54,7 +60,9 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ Enrollment state machine (TS + DB), entitlements, conversation bootstrap, CRM record
 - ✅ Append-only payment_ledger, refunds/disputes/transfers/payouts tables
 - ✅ Purchase status page reflecting webhook-written state only
-- 🟡 Reconciliation job (design + runbook + dead-letter storage done; job endpoint pending)
+- ✅ Reconciliation job `POST /v1/jobs/reconciliation`: dead-letter webhook replay +
+  per-day internal-vs-Stripe sums (threshold from system_settings), day-locked via
+  `scheduled_job_runs`, mismatches persisted + error-logged (5 integration tests)
 - ⬜ Trainer-initiated refund UI
 
 ## Phase 5 — Trainer billing: ✅ core complete (verified)
@@ -87,7 +95,9 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 - ✅ reports/moderation_cases with case-gated conversation access; immutable
   admin_actions/audit_logs; feature flags; system settings; job runs; export/deletion
   requests; consent records
-- ⬜ Admin portal UI, export/deletion job workers, appeals workflow UI
+- 🟡 Admin portal UI (trainer application review shipped at `/admin/trainers`; moderation,
+  settings and appeals screens pending)
+- ⬜ Export/deletion job workers, appeals workflow UI
 
 ## Phase 9 — Hardening: ⬜ (targets and gates documented in TESTING/DEPLOYMENT)
 
@@ -101,17 +111,19 @@ Legend: ✅ implemented & verified · 🟡 partial (data/authorization layer don
 | `pnpm typecheck` (all 13 workspaces) | ✅ |
 | `pnpm lint` | ✅ |
 | `pnpm format:check` | ✅ |
-| Unit tests (domain 32, validation 16, payments 6, media 9, observability 2) | ✅ 65 passed |
-| DB/RLS tests vs real PG16+PostGIS | ✅ 49 passed |
-| API integration tests (webhooks/billing) | ✅ 13 passed |
-| `next build` + bundle secret scan | ✅ |
+| Unit tests (domain 32, validation 16, payments 6, media 12, observability 2) | ✅ 68 passed |
+| DB/RLS tests vs real PG16+PostGIS | ✅ 51 passed |
+| API integration tests (webhooks/billing/admin/media/reconciliation) | ✅ 38 passed |
+| `next build` | ✅ |
 | `pnpm --filter @fitmarket/api build` | ✅ |
 | Mobile `tsc --noEmit` | ✅ |
 
 ## Top remaining risks
 
-1. UI coverage lags the data layer (CRM/admin/chat screens) — tracked per phase above.
-2. Geocoding adapter + reconciliation job endpoints are designed but not coded.
+1. UI coverage lags the data layer (CRM/chat screens, broader admin portal) — tracked per
+   phase above.
+2. Geocoding adapter is designed but not coded; media publish worker
+   (re-encode/variants/malware scan) still pending, so uploads stop at `quarantined`.
 3. CSP still allows inline scripts (Next bootstrap) until nonce wiring (Phase 9).
 4. In-memory rate limiter is single-instance; durable implementation needed before
    horizontal scaling.

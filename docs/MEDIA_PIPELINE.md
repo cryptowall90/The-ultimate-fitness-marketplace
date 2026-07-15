@@ -39,5 +39,20 @@ sequenceDiagram
 - Provider abstraction (`MediaStorageProvider`) keeps Supabase Storage, R2 and Cloudflare
   Images swappable.
 
+## Endpoints (services/api)
+
+- `POST /v1/media/uploads` (bearer auth, rate-limited): validates kind/type/size, enforces
+  the per-user quota and pending-upload cap, creates the `media_objects` row in
+  `pending_upload` with a random object key, and returns a one-time signed upload URL.
+- `POST /v1/media/uploads/:id/complete` (bearer auth, owner only): reads the object back
+  from storage, verifies magic bytes against the declared type (mismatch → `rejected`,
+  object deleted), records size + sha256 and moves the row to `quarantined`. The
+  scan/re-encode/publish worker (quarantined → processing → published) is a separate
+  server-managed step — clients can never publish.
+
+Storage access uses `SupabaseStorageProvider` (`@fitmarket/media`), a fetch-based adapter
+for the Supabase Storage REST API authenticated with the service-role key (services/api
+only; fixed base URL from env — no user-controlled outbound URLs).
+
 Validation logic + tests: `packages/media/src/validation.ts`,
 `packages/media/test/validation.test.ts` (SVG/polyglot rejection is critical test 14).

@@ -33,5 +33,11 @@ export interface MediaStorageProvider {
     objectKey: string;
     expiresInSeconds: number;
   }): Promise<SignedDownloadUrl>;
+  /**
+   * Reads the raw object back for server-side verification (magic-byte sniff,
+   * size check, hashing) after the client PUT. Returns null when the object
+   * does not exist (upload never happened or already cleaned up).
+   */
+  getObjectBytes(req: { bucket: string; objectKey: string }): Promise<Uint8Array | null>;
   deleteObject(req: { bucket: string; objectKey: string }): Promise<void>;
 }

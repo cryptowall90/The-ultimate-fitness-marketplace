@@ -204,6 +204,56 @@ describe("privilege escalation resistance", () => {
     ).rejects.toThrow();
   });
 
+  it("a user can create a draft trainer profile and submit it (application flow)", async () => {
+    const applicant = await createUser(db, "applicant");
+    const submitted = await db.as(applicant, async (q) => {
+      await q(
+        `insert into trainer_profiles (user_id, slug, headline, about)
+         values ($1, $2, 'Strength coaching headline', 'Long enough about text for the form')`,
+        [applicant, `apply-${applicant.slice(0, 8)}`],
+      );
+      // Owner-permitted transition: draft -> submitted (and nothing else).
+      return q(
+        `update trainer_profiles set application_status = 'submitted'
+         where user_id = $1 and application_status = 'draft'
+         returning application_status, application_submitted_at`,
+        [applicant],
+      );
+    });
+    expect(submitted.rows[0].application_status).toBe("submitted");
+    expect(submitted.rows[0].application_submitted_at).not.toBeNull();
+
+    // Once submitted, the owner cannot pull it back to draft or edit status.
+    await expect(
+      db.as(applicant, async (q) => {
+        await q(
+          `insert into trainer_profiles (user_id, slug, application_status)
+           values ($1, $2, 'draft')`,
+          [applicant, `apply2-${applicant.slice(0, 8)}`],
+        );
+        await q(`update trainer_profiles set application_status = 'submitted' where user_id = $1`, [
+          applicant,
+        ]);
+        await q(`update trainer_profiles set application_status = 'draft' where user_id = $1`, [
+          applicant,
+        ]);
+      }),
+    ).rejects.toThrow(/not permitted/);
+  });
+
+  it("a user cannot insert a trainer profile for someone else", async () => {
+    const attacker = await createUser(db, "tp-attacker");
+    const victim = await createUser(db, "tp-victim");
+    await expect(
+      db.as(attacker, (q) =>
+        q(`insert into trainer_profiles (user_id, slug) values ($1, $2)`, [
+          victim,
+          `victim-${victim.slice(0, 8)}`,
+        ]),
+      ),
+    ).rejects.toThrow();
+  });
+
   it("trainers cannot self-approve their application", async () => {
     const pendingTrainer = await createUser(db, "pending-trainer");
     await db.admin(`insert into public.user_roles (user_id, role) values ($1, 'trainer')`, [

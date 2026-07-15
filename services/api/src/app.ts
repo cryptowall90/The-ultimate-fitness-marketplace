@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import type pg from "pg";
@@ -6,17 +7,32 @@ import type { Logger } from "@fitmarket/observability";
 import { newCorrelationId, withCorrelation } from "@fitmarket/observability";
 import type {
   PaymentGateway,
+  ReconciliationGateway,
   SubscriptionGateway,
   WebhookVerifier,
   ConnectGateway,
 } from "@fitmarket/payments";
-import { createCheckoutSchema } from "@fitmarket/validation";
+import type { MediaStorageProvider } from "@fitmarket/media";
+import {
+  createCheckoutSchema,
+  createSignedUploadSchema,
+  trainerApplicationDecisionSchema,
+  trainerApplicationListSchema,
+  uuid,
+} from "@fitmarket/validation";
 import type { ApiEnv } from "./env.js";
 import { bearerAuth, jobAuth } from "./auth.js";
 import { TokenBucketLimiter, rateLimit } from "./ratelimit.js";
 import { CheckoutError, createProgramCheckout } from "./services/checkout.js";
 import { processStripeEvent } from "./services/webhooks.js";
 import { runActiveClientBilling } from "./services/activeClientBilling.js";
+import {
+  AdminTrainerError,
+  decideTrainerApplication,
+  listTrainerApplications,
+} from "./services/adminTrainers.js";
+import { MediaUploadError, createSignedUpload, finalizeUpload } from "./services/mediaUploads.js";
+import { runReconciliation } from "./services/reconciliation.js";
 
 export interface AppDeps {
   env: ApiEnv;
@@ -26,6 +42,8 @@ export interface AppDeps {
   subscriptionGateway: SubscriptionGateway;
   connectGateway: ConnectGateway;
   webhookVerifier: WebhookVerifier;
+  mediaProvider: MediaStorageProvider;
+  reconciliationGateway: ReconciliationGateway;
 }
 
 export function buildApp(deps: AppDeps): Hono {
@@ -34,6 +52,18 @@ export function buildApp(deps: AppDeps): Hono {
 
   const ipLimiter = new TokenBucketLimiter(60, 1); // 60 burst, 1/s refill
   const checkoutLimiter = new TokenBucketLimiter(10, 0.1); // 10 burst, 6/min
+  const uploadLimiter = new TokenBucketLimiter(20, 0.2); // 20 burst, 12/min
+
+  /** Requires an 'admin' row in user_roles; run AFTER bearerAuth. */
+  const requireAdmin: MiddlewareHandler = async (c, next) => {
+    const res = await pool.query(`select 1 from user_roles where user_id = $1 and role = 'admin'`, [
+      c.get("user").userId,
+    ]);
+    if (res.rowCount === 0) {
+      return c.json({ error: { code: "forbidden", message: "Admin role required" } }, 403);
+    }
+    await next();
+  };
 
   // Correlation ID + request logging (redacting logger; no bodies logged).
   app.use("*", async (c, next) => {
@@ -253,6 +283,123 @@ export function buildApp(deps: AppDeps): Hono {
   );
 
   // ---------------------------------------------------------------------
+  // Media signed uploads (authenticated). Real content is verified with
+  // magic bytes at finalize; publication remains a server-managed step.
+  // ---------------------------------------------------------------------
+  const mediaErrorStatus: Record<MediaUploadError["code"], 400 | 404 | 409 | 429> = {
+    unsupported_type: 400,
+    too_large: 400,
+    quota_exceeded: 409,
+    too_many_pending: 429,
+    not_found: 404,
+    not_uploaded: 409,
+  };
+
+  app.post(
+    "/v1/media/uploads",
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    rateLimit(uploadLimiter, "user"),
+    async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const parsed = createSignedUploadSchema.safeParse(body);
+      if (!parsed.success) {
+        return c.json({ error: { code: "invalid_request", message: "Invalid request body" } }, 400);
+      }
+      try {
+        const result = await createSignedUpload(pool, deps.mediaProvider, {
+          userId: c.get("user").userId,
+          ...parsed.data,
+        });
+        return c.json(result);
+      } catch (err) {
+        if (err instanceof MediaUploadError) {
+          return c.json(
+            { error: { code: err.code, message: err.message } },
+            mediaErrorStatus[err.code],
+          );
+        }
+        throw err;
+      }
+    },
+  );
+
+  app.post(
+    "/v1/media/uploads/:id/complete",
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    rateLimit(uploadLimiter, "user"),
+    async (c) => {
+      const mediaId = uuid.safeParse(c.req.param("id"));
+      if (!mediaId.success) {
+        return c.json({ error: { code: "invalid_request", message: "Invalid media id" } }, 400);
+      }
+      try {
+        const result = await finalizeUpload(pool, deps.mediaProvider, {
+          userId: c.get("user").userId,
+          mediaId: mediaId.data,
+        });
+        return c.json(result);
+      } catch (err) {
+        if (err instanceof MediaUploadError) {
+          return c.json(
+            { error: { code: err.code, message: err.message } },
+            mediaErrorStatus[err.code],
+          );
+        }
+        throw err;
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------
+  // Admin: trainer application review. bearerAuth + admin role; decisions
+  // are audited in admin_actions inside the same transaction.
+  // ---------------------------------------------------------------------
+  app.get(
+    "/v1/admin/trainer-applications",
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    requireAdmin,
+    async (c) => {
+      const parsed = trainerApplicationListSchema.safeParse({
+        status: c.req.query("status") ?? undefined,
+      });
+      if (!parsed.success) {
+        return c.json(
+          { error: { code: "invalid_request", message: "Invalid status filter" } },
+          400,
+        );
+      }
+      const applications = await listTrainerApplications(pool, parsed.data.status);
+      return c.json({ applications });
+    },
+  );
+
+  app.post(
+    "/v1/admin/trainer-applications/decision",
+    bearerAuth(env.SUPABASE_JWT_SECRET),
+    requireAdmin,
+    async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const parsed = trainerApplicationDecisionSchema.safeParse(body);
+      if (!parsed.success) {
+        return c.json({ error: { code: "invalid_request", message: "Invalid request body" } }, 400);
+      }
+      try {
+        const result = await decideTrainerApplication(pool, {
+          ...parsed.data,
+          actorId: c.get("user").userId,
+        });
+        return c.json(result);
+      } catch (err) {
+        if (err instanceof AdminTrainerError) {
+          const status = err.code === "application_not_found" ? 404 : 409;
+          return c.json({ error: { code: err.code, message: err.message } }, status);
+        }
+        throw err;
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------
   // Scheduled jobs (invoked by cron with the job token).
   // ---------------------------------------------------------------------
   app.post("/v1/jobs/active-client-billing", jobAuth(env.JOB_TOKEN), async (c) => {
@@ -282,6 +429,18 @@ export function buildApp(deps: AppDeps): Hono {
        where c.enrollment_id = en.id and c.status = 'active' and en.status = 'expired'`,
     );
     return c.json({ expiredEntitlements: expired.rowCount ?? 0 });
+  });
+
+  // Daily reconciliation: dead-letter webhook replay + internal-vs-provider
+  // money comparison. Mismatches are logged at error level and stored on the
+  // scheduled_job_runs row.
+  app.post("/v1/jobs/reconciliation", jobAuth(env.JOB_TOKEN), async (c) => {
+    const result = await runReconciliation(
+      pool,
+      deps.reconciliationGateway,
+      withCorrelation(log, c.get("correlationId")),
+    );
+    return c.json(result);
   });
 
   app.notFound((c) => c.json({ error: { code: "not_found", message: "Not found" } }, 404));

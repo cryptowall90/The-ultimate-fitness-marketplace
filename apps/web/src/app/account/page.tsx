@@ -177,6 +177,14 @@ export default async function AccountPage({
         )}
       </div>
 
+      <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
+        <h2>Coach on FitMarket</h2>
+        <p>Run your training business here — apply to become a verified trainer.</p>
+        <a className="btn btn-secondary" href="/trainer/apply">
+          Become a trainer
+        </a>
+      </div>
+
       <form action={signOutAction}>
         <button className="btn btn-secondary" type="submit">
           Sign out

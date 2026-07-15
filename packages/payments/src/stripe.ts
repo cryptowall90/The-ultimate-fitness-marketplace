@@ -1,9 +1,11 @@
 import Stripe from "stripe";
 import type {
+  BalanceTransactionSummary,
   CheckoutSession,
   CheckoutSessionRequest,
   ConnectGateway,
   PaymentGateway,
+  ReconciliationGateway,
   SubscriptionGateway,
   VerifiedWebhookEvent,
   WebhookVerifier,
@@ -212,6 +214,39 @@ export class StripeSubscriptionGateway implements SubscriptionGateway {
       { idempotencyKey: req.idempotencyKey },
     );
     return { providerInvoiceItemId: item.id };
+  }
+}
+
+export class StripeReconciliationGateway implements ReconciliationGateway {
+  constructor(private readonly stripe: Stripe) {}
+
+  async listBalanceTransactions(req: {
+    createdGte: Date;
+    createdLt: Date;
+  }): Promise<BalanceTransactionSummary[]> {
+    const results: BalanceTransactionSummary[] = [];
+    const HARD_CAP = 10_000; // one day of transactions; alert-worthy if exceeded
+    const list = this.stripe.balanceTransactions.list({
+      created: {
+        gte: Math.floor(req.createdGte.getTime() / 1000),
+        lt: Math.floor(req.createdLt.getTime() / 1000),
+      },
+      limit: 100,
+    });
+    for await (const tx of list) {
+      results.push({
+        id: tx.id,
+        type: tx.type,
+        amountCents: tx.amount,
+        feeCents: tx.fee,
+        currency: tx.currency,
+        createdAt: new Date(tx.created * 1000),
+      });
+      if (results.length >= HARD_CAP) {
+        throw new Error(`balance transaction window exceeds ${HARD_CAP} rows; narrow the window`);
+      }
+    }
+    return results;
   }
 }
 
